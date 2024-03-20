@@ -1,10 +1,13 @@
 package com.taut0logy.readerforu;
 
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.Menu;
@@ -17,6 +20,7 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -29,6 +33,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 
 public class InfoActivity extends AppCompatActivity {
+    private static final String PDF_CACHE_KEY = "pdf_cache";
     private Toolbar toolbar;
     private ImageView imageView;
     private TextView bookName,authorName,description,totalPages,size,location, modified;
@@ -160,6 +165,19 @@ public class InfoActivity extends AppCompatActivity {
                 builder.setPositiveButton("Yes", (dialog, which) -> {
                     File file = new File(pdfFile.getLocation());
                     if(file.delete()) {
+                        BrowserActivity.getPdfFiles().remove(getIntent().getIntExtra("position", 0));
+                        BrowserActivity.getPdfFileAdapter().notifyItemRemoved(getIntent().getIntExtra("position", 0));
+                        SharedPreferences sharedPreferences = getSharedPreferences("reader", Context.MODE_PRIVATE);
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.remove(BrowserActivity.getPdfFiles().get(getIntent().getIntExtra("position", 0)).getLocation());
+                        try {
+                            JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+                            jsonArray.remove(getIntent().getIntExtra("position", 0));
+                            editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+                            editor.apply();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                         Toast.makeText(InfoActivity.this, "Deleted Successfully", Toast.LENGTH_SHORT).show();
                     } else {
                         Toast.makeText(InfoActivity.this, "Failed to delete", Toast.LENGTH_SHORT).show();

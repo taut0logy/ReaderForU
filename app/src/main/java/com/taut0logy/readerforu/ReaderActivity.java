@@ -17,11 +17,16 @@ import android.widget.TextView;
 import com.github.barteksc.pdfviewer.PDFView;
 import com.github.barteksc.pdfviewer.listener.OnPageChangeListener;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 
 import javax.sql.DataSource;
 
 public class ReaderActivity extends AppCompatActivity implements JumpToPageFragment.JumpToPageListener {
+    private static final String PDF_CACHE_KEY = "pdf_cache";
     PDFFile pdfFile;
     private boolean barsVisible = true;
     private int recyclerPosition;
@@ -89,22 +94,22 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     }
 
     @Override
-    protected void onResume() {
-        int page = getIntent().getIntExtra("page", 0);
-        super.onResume();
-    }
-
-    @Override
     protected void onPause() {
+        BrowserActivity.getPdfFiles().get(recyclerPosition).setCurrPage(nowPage);
+        BrowserActivity.getPdfFileAdapter().notifyItemChanged(recyclerPosition);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean("isNight", isNight);
-        editor.putInt(pdfFile.getName()+"nowPage", nowPage);
+        editor.putInt(pdfFile.getLocation()+"nowPage", nowPage);
+        try {
+            JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+            JSONObject jsonObject = jsonArray.getJSONObject(recyclerPosition);
+            jsonObject.put("currPage", nowPage);
+            jsonArray.put(recyclerPosition, jsonObject);
+            editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+        } catch (JSONException ex) {
+            ex.printStackTrace();
+        }
         editor.apply();
-        Log.d("ReaderActivity", "onPause: "+isNight+" "+nowPage);
-        Intent intent = new Intent(ReaderActivity.this, BrowserActivity.class);
-        intent.putExtra("page", nowPage);
-        intent.putExtra("position", recyclerPosition);
-        Log.e("PDFErr", "onPause: " + nowPage);
         super.onPause();
     }
 
@@ -112,7 +117,16 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     protected void onStop() {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean("isNight", isNight);
-        editor.putInt(pdfFile.getName()+"nowPage", nowPage);
+        editor.putInt(pdfFile.getLocation()+"nowPage", nowPage);
+        try {
+            JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+            JSONObject jsonObject = jsonArray.getJSONObject(recyclerPosition);
+            jsonObject.put("currPage", nowPage);
+            jsonArray.put(recyclerPosition, jsonObject);
+            editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+        } catch (JSONException ex) {
+            ex.printStackTrace();
+        }
         editor.apply();
         Log.d("ReaderActivity", "onStop: "+isNight+" "+nowPage);
         super.onStop();
@@ -121,7 +135,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     private void loadPreferences() {
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         isNight = sharedPreferences.getBoolean("isNight", false);
-        nowPage = sharedPreferences.getInt(pdfFile.getName()+"nowPage", 0);
+        nowPage = sharedPreferences.getInt(pdfFile.getLocation()+"nowPage", 0);
     }
 
     private void loadPDFInBackground() {

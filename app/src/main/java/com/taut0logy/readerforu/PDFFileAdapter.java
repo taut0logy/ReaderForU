@@ -3,6 +3,7 @@ package com.taut0logy.readerforu;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Environment;
 import android.util.Log;
@@ -18,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.imageview.ShapeableImageView;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -34,6 +36,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
 
     private List<PDFFile> pdfFiles;
     private Context context;
+    private static final String PDF_CACHE_KEY = "pdf_cache";
 
     public PDFFileAdapter(List<PDFFile> pdfFiles, Context context){
         this.pdfFiles = pdfFiles;
@@ -56,6 +59,8 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         holder.totalPages.setText(pages);
         Log.d("PDFFileAdapter", "onBindViewHolder: "+pdfFile.getCurrPage()+" "+pdfFile.getTotalPages());
         float progress = ((float)pdfFile.getCurrPage()/(float)pdfFile.getTotalPages())*100;
+        //keep 2 decimal places
+        progress = Math.round(progress*100.0)/100.0f;
         holder.progress.setText(progress+"%");
         Bitmap bitmap = pdfFile.getThumbnail();
         holder.thumbnail.setImageBitmap(bitmap);
@@ -204,6 +209,17 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         builder.setPositiveButton("Yes", (dialog, which) -> {
             File file = new File(pdfFiles.get(position).getLocation());
             if(file.delete()) {
+                SharedPreferences sharedPreferences = context.getSharedPreferences("reader", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.remove(pdfFiles.get(position).getLocation());
+                try {
+                    JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+                    jsonArray.remove(position);
+                    editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+                    editor.apply();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 pdfFiles.remove(position);
                 notifyItemRemoved(position);
                 notifyItemRangeChanged(position, pdfFiles.size());
