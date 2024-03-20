@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="220dp"
+    android:layout_marginStart="10dp"
+    android:layout_marginTop="5dp"
+    android:layout_marginEnd="10dp"
+    android:layout_marginBottom="5dp"
+    android:background="@drawable/card_bg"
+    android:padding="10dp"
+    app:cardCornerRadius="20dp">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/book_thumbnail"
+        android:layout_width="100dp"
+        android:layout_height="150dp"
+        android:contentDescription="@string/thumbnail_of_the_book"
+        android:scaleType="centerCrop"
+        android:src="@drawable/sample"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:shapeAppearanceOverlay="@style/roundedImageView" />
+
+    <TextView
+        android:id="@+id/book_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:paddingStart="10dp"
+        android:maxLines="2"
+        android:text="name of the book here in one line"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/book_thumbnail"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/author_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:ellipsize="end"
+        android:paddingStart="10dp"
+        android:lines="1"
+        android:text="author"
+        android:textColor="@color/dark_grey"
+        android:textSize="18sp"
+        android:textStyle="italic"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/book_thumbnail"
+        app:layout_constraintTop_toBottomOf="@+id/book_name" />
+
+    <TextView
+        android:id="@+id/pages"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:paddingStart="10dp"
+        android:text="Pages: "
+        android:textColor="@color/dark_grey"
+        android:textSize="15sp"
+        app:layout_constraintStart_toEndOf="@+id/book_thumbnail"
+        app:layout_constraintTop_toBottomOf="@+id/author_name" />
+
+    <TextView
+        android:id="@+id/page_cnt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:layout_marginTop="5dp"
+        android:text="100"
+        android:textColor="@color/dark_grey"
+        android:textSize="15sp"
+        app:layout_constraintStart_toEndOf="@+id/pages"
+        app:layout_constraintTop_toBottomOf="@+id/author_name" />
+
+    <TextView
+        android:id="@+id/progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:paddingStart="10dp"
+        android:paddingBottom="5dp"
+        android:text="Progress: "
+        android:textColor="@color/dark_grey"
+        android:textSize="15sp"
+        app:layout_constraintStart_toEndOf="@+id/book_thumbnail"
+        app:layout_constraintTop_toBottomOf="@+id/pages" />
+
+    <TextView
+        android:id="@+id/progress_percentage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:paddingBottom="5dp"
+        android:text="0%"
+        android:textColor="@color/dark_grey"
+        android:textSize="15sp"
+        app:layout_constraintStart_toEndOf="@+id/progress"
+        app:layout_constraintTop_toBottomOf="@+id/page_cnt" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_end="48dp" />
+
+    <ImageButton
+        android:id="@+id/favouriteButton"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@color/transparent"
+        android:src="@drawable/star_regular"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/editButton"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/guideline"
+        app:layout_constraintVertical_bias="0.916" />
+
+    <ImageButton
+        android:id="@+id/editButton"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@color/transparent"
+        android:src="@drawable/pen_to_square_solid"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/deleteButton"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/favouriteButton"
+        app:layout_constraintTop_toBottomOf="@+id/guideline"
+        app:layout_constraintVertical_bias="0.875" />
+
+    <ImageButton
+        android:id="@+id/deleteButton"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@color/transparent"
+        android:src="@drawable/trash_solid"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/infoButton"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/editButton"
+        app:layout_constraintTop_toBottomOf="@+id/guideline"
+        app:layout_constraintVertical_bias="0.916" />
+
+    <ImageButton
+        android:id="@+id/infoButton"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@color/transparent"
+        android:src="@drawable/info_solid"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/deleteButton"
+        app:layout_constraintTop_toBottomOf="@+id/guideline"
+        app:layout_constraintVertical_bias="1.0" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

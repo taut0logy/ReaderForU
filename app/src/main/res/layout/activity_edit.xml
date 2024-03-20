@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#11235A"
+    tools:context=".EditActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/edit_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:background="@drawable/toolbar_bg"
+        android:backgroundTint="#40679E"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:menu="@menu/edit_menu"
+        app:subtitle="Edit File Info"
+        app:subtitleTextColor="@color/light_grey"
+        app:title="ReaderForU"
+        app:titleTextColor="@color/light_grey" />
+
+    <ImageView
+        android:id="@+id/bookImageViewEdit"
+        android:layout_width="100dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="20dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/sample"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/edit_toolbar" />
+
+    <EditText
+        android:id="@+id/bookNameEdit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:padding="10dp"
+        android:hint="Edit Title"
+        android:background="@drawable/et_bg"
+        android:textColor="@color/white"
+        android:textColorHint="@color/dark_grey"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@+id/bookImageViewEdit"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <EditText
+        android:id="@+id/authorEdit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:padding="10dp"
+        android:hint="New Author"
+        android:background="@drawable/et_bg"
+        android:textColor="@color/white"
+        android:textColorHint="@color/dark_grey"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@+id/bookNameEdit"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <EditText
+        android:id="@+id/descriptionEdit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:padding="10dp"
+        android:hint="New Description"
+        android:background="@drawable/et_bg"
+        android:textColor="@color/white"
+        android:textColorHint="@color/dark_grey"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@+id/authorEdit"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <EditText
+        android:id="@+id/creatorEdit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/et_bg"
+        android:hint="New Creator"
+        android:padding="10dp"
+        android:textColor="@color/white"
+        android:textColorHint="@color/dark_grey"
+        android:textSize="18sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/descriptionEdit" />
+
+    <Button
+        android:id="@+id/editSaveButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="#3559E0"
+        android:text="Save"
+        android:textColor="@color/light_grey"
+        app:layout_constraintTop_toBottomOf="@+id/creatorEdit"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_favourite"
+        android:icon="@drawable/baseline_star_border_24"
+        android:title="@string/bookmark"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_edit"
+        android:icon="@drawable/baseline_edit_24"
+        android:title="@string/edit"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_delete"
+        android:icon="@drawable/baseline_delete_24"
+        android:title="@string/delete"
+        android:orderInCategory="100"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_about"
+        android:icon="@drawable/baseline_info_24"
+        android:title="@string/about"
+        android:orderInCategory="100"
+        app:showAsAction="never" />
+</menu>

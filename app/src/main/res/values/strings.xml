@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">ReaderForU</string>
+    <string name="thumbnail_of_the_book">Thumbnail of the book</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="refresh">refresh</string>
+    <string name="search">search</string>
+    <string name="about">about</string>
+    <string name="exit">exit</string>
+    <string name="bookmark">bookmark</string>
+    <string name="edit">edit</string>
+    <string name="delete">delete</string>
+</resources>
