@@ -18,14 +18,14 @@ import android.widget.TextView;
 public class JumpToPageFragment extends AppCompatDialogFragment {
 
     private EditText jumpInput;
-    private final int pagecnt;
-    private final int curpage;
+    private final int pageCnt;
+    private final int currPage;
 
     public interface JumpToPageListener {
         void onJumpToPage(int pageNumber);
     }
 
-    public JumpToPageFragment(int n,int m){this.pagecnt=n;this.curpage=m;}
+    public JumpToPageFragment(int n,int m){this.pageCnt =n;this.currPage =m;}
 
     private JumpToPageListener listener;
 
@@ -40,21 +40,18 @@ public class JumpToPageFragment extends AppCompatDialogFragment {
         jumpInput = view.findViewById(R.id.jumpInp);
         Button jumpButton = view.findViewById(R.id.jumpbtn);
         TextView totalPage = view.findViewById(R.id.totalPage);
-        jumpInput.setHint(String.valueOf(curpage));
-        totalPage.setText("/"+String.valueOf(pagecnt));
-        Log.d("JumpToPageFragment", "onCreateView: "+pagecnt+" "+curpage);
-        //jumpInput.setText(String.valueOf(curpage));
-        jumpButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(jumpInput.getText().toString().isEmpty())
-                    jumpInput.setText(String.valueOf(curpage));
-                int pageNumber = Integer.parseInt(jumpInput.getText().toString());
-                if(pageNumber>0 && pageNumber<=pagecnt)
-                    jumpToPage();
-                else
-                    jumpInput.setError("Invalid Page Number");
-            }
+        jumpInput.setHint(String.valueOf(currPage));
+        String s = "/"+ pageCnt;
+        totalPage.setText(s);
+        Log.d("JumpToPageFragment", "onCreateView: "+ pageCnt +" "+ currPage);
+        jumpButton.setOnClickListener(v -> {
+            if(jumpInput.getText().toString().isEmpty())
+                jumpInput.setText(String.valueOf(currPage));
+            int pageNumber = Integer.parseInt(jumpInput.getText().toString());
+            if(pageNumber>0 && pageNumber<= pageCnt)
+                jumpToPage();
+            else
+                jumpInput.setError("Invalid Page Number");
         });
         return view;
     }

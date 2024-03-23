@@ -22,7 +22,7 @@
         app:title="ReaderForU"
         app:titleTextColor="@color/light_grey" />
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/bookImageView"
         android:layout_width="100dp"
         android:layout_height="150dp"
@@ -30,6 +30,8 @@
         android:scaleType="centerCrop"
         android:layout_marginTop="20dp"
         android:src="@drawable/sample"
+        android:background="@color/white"
+        app:shapeAppearanceOverlay="@style/roundedImageView"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/info_toolbar" />
 

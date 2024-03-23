@@ -11,12 +11,6 @@
     <!-- PDF View Container -->
 
 
-    <RelativeLayout
-        android:id="@+id/pdfViewContainer"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        >
-
         <!-- PDF View -->
         <com.github.barteksc.pdfviewer.PDFView
             android:id="@+id/pdfView"
@@ -27,7 +21,7 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/topBar"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
                 android:background="@drawable/toolbar_bg"
                 android:backgroundTint="#11235A"
                 android:paddingStart="5dp"
@@ -45,11 +39,13 @@
                     android:layout_height="wrap_content"
                     android:layout_centerInParent="true"
                     android:gravity="center"
-                    android:text="Book Name"
+                    android:text="@string/book_name"
                     android:textColor="@color/light_grey"
                     android:textSize="20sp"
-                    android:maxLines="1"
+                    android:maxLines="2"
                     android:ellipsize="end"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -60,11 +56,13 @@
                     android:layout_height="wrap_content"
                     android:layout_centerInParent="true"
                     android:gravity="center"
-                    android:text="Author Name"
+                    android:text="@string/author_name"
                     android:textColor="@color/dark_grey"
-                    android:maxLines="1"
+                    android:maxLines="2"
                     android:ellipsize="end"
                     android:textSize="16sp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintHorizontal_bias="0.5"
                     app:layout_constraintStart_toStartOf="parent"
@@ -77,13 +75,15 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/bottomBar"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
                 android:layout_alignParentBottom="true"
                 android:background="@drawable/toolbar_bottom_bg"
                 android:backgroundTint="#11235A"
                 android:elevation="5dp">
 
                 <Button
+                    android:text="@string/jump"
+                    android:textColor="@color/transparent"
                     android:id="@+id/showDialog"
                     android:layout_width="wrap_content"
                     android:layout_height="70dp"
@@ -94,15 +94,13 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
-
                 <TextView
                     android:id="@+id/etCurrentPage"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@color/transparent"
                     android:gravity="center"
-                    android:inputType="number"
-                    android:text="0"
+                    android:text="@string/_000"
                     android:textColor="@color/dark_grey"
                     android:textSize="20sp"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -116,7 +114,7 @@
                     android:id="@+id/textView3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="/"
+                    android:text="@string/slash"
                     android:textColor="@color/white"
                     android:textSize="25sp"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -131,7 +129,7 @@
                     android:layout_height="wrap_content"
                     android:background="@color/transparent"
                     android:gravity="center"
-                    android:text="100"
+                    android:text="@string/_100"
                     android:textColor="@color/dark_grey"
                     android:textSize="20sp"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -142,37 +140,32 @@
 
                 <ImageButton
                     android:id="@+id/toggleDark"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:background="@color/transparent"
                     android:src="@drawable/moon_solid"
                     android:paddingStart="10dp"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent"
+                    android:contentDescription="@string/toggle_dark_mode"
+                    tools:ignore="RtlSymmetry" />
 
                 <ImageButton
                     android:id="@+id/infobtn"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:background="@color/transparent"
                     android:src="@drawable/circle_info_solid__1_"
                     android:paddingEnd="10dp"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-
-                <!-- Add your bottom bar content here -->
+                    app:layout_constraintTop_toTopOf="parent"
+                    android:contentDescription="@string/info_on_current_file"
+                    tools:ignore="RtlSymmetry" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
         </com.github.barteksc.pdfviewer.PDFView>
-
-        <!-- Add your left scrollbar here -->
-
-    </RelativeLayout>
-
-    <!-- Bottom Bar -->
-
 
 </RelativeLayout>

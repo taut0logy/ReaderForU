@@ -29,13 +29,12 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.Buffer;
 import java.util.List;
 
 public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileViewHolder>{
 
-    private List<PDFFile> pdfFiles;
-    private Context context;
+    private final List<PDFFile> pdfFiles;
+    private final Context context;
     private static final String PDF_CACHE_KEY = "pdf_cache";
 
     public PDFFileAdapter(List<PDFFile> pdfFiles, Context context){
@@ -61,7 +60,8 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         float progress = ((float)pdfFile.getCurrPage()/(float)pdfFile.getTotalPages())*100;
         //keep 2 decimal places
         progress = Math.round(progress*100.0)/100.0f;
-        holder.progress.setText(progress+"%");
+        String progressStr = progress+"%";
+        holder.progress.setText(progressStr);
         Bitmap bitmap = pdfFile.getThumbnail();
         holder.thumbnail.setImageBitmap(bitmap);
         if(pdfFile.getFavourite()) {
@@ -69,112 +69,50 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         } else {
             holder.favButton.setImageResource(R.drawable.star_regular);
         }
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(context, ReaderActivity.class);
-                intent.putExtra("pdfFile", pdfFile);
-                intent.putExtra("position", position);
-                context.startActivity(intent);
-            }
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(context, ReaderActivity.class);
+            intent.putExtra("pdfFile", pdfFile);
+            intent.putExtra("position", position);
+            context.startActivity(intent);
         });
-        holder.favButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String favListPath = Environment.getExternalStorageDirectory() + "/ReaderForU/BookData/favlist.json";
-                // Initialize JSONObjects
-                JSONObject jsonObject = new JSONObject();
-                FileInputStream fileInputStream = null;
-                InputStreamReader inputStreamReader = null;
-                BufferedReader bufferedReader = null;
+        holder.favButton.setOnClickListener(v -> {
+            JSONObject jsonObject = getFavList();
+            // Update JSON data based on button click
+            if (pdfFile.getFavourite()) {
+                pdfFile.setFavourite(false);
+                jsonObject.remove(pdfFile.getName());
+                holder.favButton.setImageResource(R.drawable.star_regular);
+            } else {
+                pdfFile.setFavourite(true);
                 try {
-                    // Read existing JSON data from the file
-                    fileInputStream = new FileInputStream(favListPath);
-                    inputStreamReader = new InputStreamReader(fileInputStream);
-                    bufferedReader = new BufferedReader(inputStreamReader);
-                    StringBuilder stringBuilder = new StringBuilder();
-                    String line;
-                    while((line = bufferedReader.readLine()) != null) {
-                        stringBuilder.append(line);
-                    }
-                    // Parse the JSON data
-                    String jsonString = stringBuilder.toString();
-                    if (!jsonString.isEmpty()) {
-                        jsonObject = new JSONObject(jsonString);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    // Close resources
-                    try {
-                        if (fileInputStream != null) {
-                            fileInputStream.close();
-                        }
-                        if (inputStreamReader != null) {
-                            inputStreamReader.close();
-                        }
-                        if (bufferedReader != null) {
-                            bufferedReader.close();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    jsonObject.put(pdfFile.getLocation(), true);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
                 }
-
-                // Update JSON data based on button click
-                if (pdfFile.getFavourite()) {
-                    pdfFile.setFavourite(false);
-                    jsonObject.remove(pdfFile.getName());
-                    holder.favButton.setImageResource(R.drawable.star_regular);
-                } else {
-                    pdfFile.setFavourite(true);
-                    try {
-                        jsonObject.put(pdfFile.getName(), true);
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                    holder.favButton.setImageResource(R.drawable.star_solid);
-                }
-
-                // Write updated JSON data back to the file
-                try {
-                    FileWriter fileWriter = new FileWriter(favListPath);
-                    fileWriter.write(jsonObject.toString());
-                    fileWriter.flush();
-                    fileWriter.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                // Update PDF file at the position in the list
-                updatePDFFileAt(position, pdfFile);
+                holder.favButton.setImageResource(R.drawable.star_solid);
             }
+            // Write updated JSON data back to the file
+            writeFavList(jsonObject);
+            BrowserActivity.getPdfFiles().get(position).setFavourite(pdfFile.getFavourite());
+            notifyItemChanged(position);
         });
 
-        holder.deleteButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //delete the file
-                showConfirmationDialog(context, position);
-            }
+        holder.deleteButton.setOnClickListener(v -> {
+            //delete the file
+            showConfirmationDialog(context, position);
         });
-        holder.editButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //edit the file
-                Intent intent = new Intent(context, EditActivity.class);
-                //intent.putExtra("pdfFile", pdfFile);
-                intent.putExtra("position", position);
-                context.startActivity(intent);
-            }
+        holder.editButton.setOnClickListener(v -> {
+            //edit the file
+            Intent intent = new Intent(context, EditActivity.class);
+            //intent.putExtra("pdfFile", pdfFile);
+            intent.putExtra("position", position);
+            context.startActivity(intent);
         });
-        holder.infoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(context, InfoActivity.class);
-                //intent.putExtra("pdfFile", pdfFile);
-                intent.putExtra("position", position);
-                context.startActivity(intent);
-            }
+        holder.infoButton.setOnClickListener(v -> {
+            Intent intent = new Intent(context, InfoActivity.class);
+            //intent.putExtra("pdfFile", pdfFile);
+            intent.putExtra("position", position);
+            context.startActivity(intent);
         });
     }
 
@@ -183,7 +121,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         return pdfFiles.size();
     }
 
-    public class PDFFileViewHolder extends RecyclerView.ViewHolder {
+    public static class PDFFileViewHolder extends RecyclerView.ViewHolder {
 
         ShapeableImageView thumbnail;
         TextView name, author, totalPages, progress;
@@ -206,57 +144,116 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("Delete");
         builder.setMessage("Are you sure you want to delete this file?");
-        builder.setPositiveButton("Yes", (dialog, which) -> {
-            File file = new File(pdfFiles.get(position).getLocation());
-            if(file.delete()) {
-                SharedPreferences sharedPreferences = context.getSharedPreferences("reader", Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = sharedPreferences.edit();
-                editor.remove(pdfFiles.get(position).getLocation());
-                try {
-                    JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-                    jsonArray.remove(position);
-                    editor.putString(PDF_CACHE_KEY, jsonArray.toString());
-                    editor.apply();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                pdfFiles.remove(position);
-                notifyItemRemoved(position);
-                notifyItemRangeChanged(position, pdfFiles.size());
-                Toast.makeText(context, "Deleted Successfully", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(context, "Failed to delete", Toast.LENGTH_SHORT).show();
-            }
-        });
+        builder.setPositiveButton("Yes", (dialog, which) -> deletePDFFileAt(context, position));
         builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
         builder.create().show();
-    }
-
-    public void setPDFFiles(List<PDFFile> pdfFiles) {
-        this.pdfFiles = pdfFiles;
-        notifyDataSetChanged();
     }
 
     public PDFFile getPDFFileAt(int position) {
         return pdfFiles.get(position);
     }
 
+    public void updatePDFFileAt(int position, PDFFile pdfFile) {
+        BrowserActivity.getPdfFiles().set(position, pdfFile);
+        pdfFiles.set(position, pdfFile);
+        notifyItemChanged(position);
+    }
     public void removePDFFileAt(int position) {
+        BrowserActivity.getPdfFiles().remove(position);
         pdfFiles.remove(position);
         notifyItemRemoved(position);
+        notifyItemRangeChanged(position, pdfFiles.size());
     }
 
     public void addPDFFile(PDFFile pdfFile) {
+        BrowserActivity.getPdfFiles().add(pdfFile);
         pdfFiles.add(pdfFile);
         notifyItemInserted(pdfFiles.size()-1);
     }
 
-    public void updatePDFFileAt(int position, PDFFile pdfFile) {
-        pdfFiles.set(position, pdfFile);
-        notifyItemChanged(position);
+    public JSONObject getFavList() {
+        String favListPath = Environment.getExternalStorageDirectory() + "/ReaderForU/BookData/favlist.json";
+        // Initialize JSONObjects
+        JSONObject jsonObject = new JSONObject();
+        FileInputStream fileInputStream = null;
+        InputStreamReader inputStreamReader = null;
+        BufferedReader bufferedReader = null;
+        try {
+            // Read existing JSON data from the file
+            fileInputStream = new FileInputStream(favListPath);
+            inputStreamReader = new InputStreamReader(fileInputStream);
+            bufferedReader = new BufferedReader(inputStreamReader);
+            StringBuilder stringBuilder = new StringBuilder();
+            String line;
+            while((line = bufferedReader.readLine()) != null) {
+                stringBuilder.append(line);
+            }
+            // Parse the JSON data
+            String jsonString = stringBuilder.toString();
+            if (!jsonString.isEmpty()) {
+                jsonObject = new JSONObject(jsonString);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            // Close resources
+            try {
+                if (fileInputStream != null) {
+                    fileInputStream.close();
+                }
+                if (inputStreamReader != null) {
+                    inputStreamReader.close();
+                }
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return jsonObject;
     }
 
-    public Bitmap getThumbnailAt(int position) {
-        return pdfFiles.get(position).getThumbnail();
+    public void writeFavList(JSONObject jsonObject) {
+        String favListPath = Environment.getExternalStorageDirectory() + "/ReaderForU/BookData/favlist.json";
+        // Write updated JSON data back to the file
+        try {
+            FileWriter fileWriter = new FileWriter(favListPath);
+            fileWriter.write(jsonObject.toString());
+            fileWriter.flush();
+            fileWriter.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void deletePDFFileAt(Context context, int position) {
+        File file = new File(pdfFiles.get(position).getLocation());
+        if(file.delete()) {
+            SharedPreferences sharedPreferences = context.getSharedPreferences("reader", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            try {
+                JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+                jsonArray.remove(position);
+                editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+                editor.apply();
+                JSONObject jsonObject = getFavList();
+                jsonObject.remove(pdfFiles.get(position).getLocation());
+                writeFavList(jsonObject);
+                File thumbnail = new File(pdfFiles.get(position).getImagePath());
+                boolean res=thumbnail.delete();
+                if(res) {
+                    Log.d("PDFFileAdapter", "showConfirmationDialog: Thumbnail deleted");
+                } else {
+                    Log.d("PDFFileAdapter", "showConfirmationDialog: Thumbnail not deleted");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            removePDFFileAt(position);
+            Toast.makeText(context, "Deleted Successfully", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(context, "Failed to delete", Toast.LENGTH_SHORT).show();
+        }
     }
 }

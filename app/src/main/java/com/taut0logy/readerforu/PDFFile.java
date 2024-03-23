@@ -3,6 +3,9 @@ package com.taut0logy.readerforu;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.Serializable;
 
@@ -13,7 +16,7 @@ public class PDFFile implements Serializable {
     private String location;
     private String imagePath;
     private int currPage;
-    private int totalPages;
+    private final int totalPages;
     private boolean isFavourite;
 
     public PDFFile(String name, String author, String description, String location, String imagePath, int currPage, int totalPages, boolean isFavourite) {
@@ -87,11 +90,23 @@ public class PDFFile implements Serializable {
         this.currPage = currPage;
     }
 
-    public void setTotalPages(int totalPages) {
-        this.totalPages = totalPages;
-    }
-
     public void setFavourite(boolean isFavourite) {
         this.isFavourite = isFavourite;
+    }
+    public JSONObject toJSON() {
+        JSONObject pdfObj = new JSONObject();
+        try {
+            pdfObj.put("name", name);
+            pdfObj.put("author", author);
+            pdfObj.put("description", description);
+            pdfObj.put("path", location);
+            pdfObj.put("thumbnailPath", imagePath);
+            pdfObj.put("currPage", currPage);
+            pdfObj.put("totalPages", totalPages);
+            pdfObj.put("isFav", isFavourite);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return pdfObj;
     }
 }

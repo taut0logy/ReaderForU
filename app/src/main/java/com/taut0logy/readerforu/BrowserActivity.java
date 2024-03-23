@@ -1,24 +1,24 @@
 package com.taut0logy.readerforu;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.view.Menu;
-
-//import com.tom_roush.pdfbox.pdmodel.PDDocument;
-//import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
-//import com.tom_roush.pdfbox.rendering.PDFRenderer;
+import android.widget.TextView;
 
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfReader;
@@ -32,25 +32,16 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.Arrays;
 
 public class BrowserActivity extends AppCompatActivity {
-
     private static ArrayList<PDFFile> pdfFiles;
+    @SuppressLint("StaticFieldLeak")
     private static PDFFileAdapter pdfFileAdapter;
-    private RecyclerView recyclerView;
+    private TextView statusText;
     private SharedPreferences sharedPreferences;
     Toolbar toolbar;
     private static final String PDF_CACHE_KEY = "pdf_cache";
-    private boolean isLoading = false;
-    private boolean isLastPage = false;
-    private int currentPage = 1;
-    private int totalItems = 0;
-    private int visibleItemCount;
-    private int pastVisibleItems;
-    private int recyclerViewThreshold = 5;
-
     protected static ArrayList<PDFFile> getPdfFiles() {
         return pdfFiles;
     }
@@ -59,21 +50,36 @@ public class BrowserActivity extends AppCompatActivity {
         return pdfFileAdapter;
     }
 
-
+    @SuppressLint("NotifyDataSetChanged")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_browser);
         toolbar = findViewById(R.id.browser_toolbar);
-        recyclerView = findViewById(R.id.recyclerView_browser);
+        RecyclerView recyclerView = findViewById(R.id.recyclerView_browser);
+        statusText = findViewById(R.id.tvStatus);
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
-        pdfFiles = new ArrayList<PDFFile>();
+        pdfFiles = new ArrayList<>();
         setSupportActionBar(toolbar);
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
                 if(id == R.id.action_refresh) {
-                    loadPDFFiles();
-                    pdfFileAdapter.notifyDataSetChanged();
+                    AlertDialog.Builder builder = new AlertDialog.Builder(BrowserActivity.this);
+                    builder.setTitle("Refreshing PDF Files...");
+                    builder.setMessage(
+                            "This may take a while...\n" +
+                            "Please do not close the app...");
+                    builder.setCancelable(false);
+                    AlertDialog alertDialog = builder.create();
+                    alertDialog.show();
+                    new Thread(() -> {
+                        loadPDFFiles();
+                        savePDFFilesToCache();
+                        runOnUiThread(() -> {
+                            pdfFileAdapter.notifyDataSetChanged();
+                            alertDialog.dismiss();
+                        });
+                    }).start();
                     return true;
                 }
                 if(id == R.id.action_search) {
@@ -81,7 +87,7 @@ public class BrowserActivity extends AppCompatActivity {
                     return true;
                 }
                 if(id == R.id.action_about) {
-                    startActivity(new Intent(BrowserActivity.this, AboutActivity.class));
+                    showAboutDialog(BrowserActivity.this);
                     return true;
                 }
                 if(id == R.id.action_exit) {
@@ -90,32 +96,24 @@ public class BrowserActivity extends AppCompatActivity {
                 }
                 return false;
         });
-        //loadPDFFiles();
-        if (isPdfCacheAvailable()) {
-            loadCachedPDFFiles();
-        } else {
-            loadPDFFiles();
-        }
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-                LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-                visibleItemCount = linearLayoutManager.getChildCount();
-                totalItems = linearLayoutManager.getItemCount();
-                pastVisibleItems = linearLayoutManager.findFirstVisibleItemPosition();
-                if (!isLoading && !isLastPage) {
-                    if ((visibleItemCount + pastVisibleItems) >= totalItems - recyclerViewThreshold) {
-                        isLoading = true;
-                        currentPage++;
-                        loadmorePDFFiles(currentPage);
-                        isLoading = false;
-                    }
-                }
-            }
-        });
         pdfFileAdapter = new PDFFileAdapter(pdfFiles, this);
         recyclerView.setAdapter(pdfFileAdapter);
+        //load pdf files asynchronously
+        statusText.setVisibility(TextView.VISIBLE);
+        statusText.setText(R.string.loading_pdf_files);
+        new Thread(() -> {
+            //loadPDFFiles();
+            if (isPdfCacheAvailable()) {
+                loadCachedPDFFiles();
+            } else {
+                loadPDFFiles();
+            }
+            runOnUiThread(() -> {
+                statusText.setVisibility(TextView.GONE);
+                pdfFileAdapter.notifyDataSetChanged();
+            });
+        }).start();
+        savePDFFilesToCache();
     }
 
     @Override
@@ -124,9 +122,12 @@ public class BrowserActivity extends AppCompatActivity {
         return true;
     }
 
+
     @Override
-    protected void onResume() {
-        super.onResume();
+    protected void onPause() {
+        super.onPause();
+        // Save PDF files to cache when activity pauses
+        savePDFFilesToCache();
     }
 
     @Override
@@ -134,64 +135,6 @@ public class BrowserActivity extends AppCompatActivity {
         super.onStop();
         // Save PDF files to cache when activity stops
         savePDFFilesToCache();
-    }
-
-    private void loadmorePDFFiles(int page) {
-        File folder = new File(Environment.getExternalStorageDirectory() + "/Documents");
-        File[] files = folder.listFiles();
-        File folder1 = new File(Environment.getExternalStorageDirectory() + "/Download");
-        File[] files1 = folder1.listFiles();
-        ArrayList<File> allFiles = new ArrayList<File>();
-        if(files != null) {
-            for (File file : files) {
-                allFiles.add(file);
-            }
-        }
-        if(files1 != null) {
-            for (File file : files1) {
-                allFiles.add(file);
-            }
-        }
-        allFiles.sort(Comparator.comparing(File::getName));
-        if(allFiles.size() != 0) {
-            for (File file : allFiles) {
-                if (file.getName().endsWith(".pdf")) {
-                    String path = file.getAbsolutePath();
-                    String name = file.getName();
-                    try {
-                        PdfReader reader = new PdfReader(path);
-                        PdfDocument pdfDocument = new PdfDocument(reader);
-                        int pages = pdfDocument.getNumberOfPages();
-                        String title = pdfDocument.getDocumentInfo().getTitle();
-                        String author = pdfDocument.getDocumentInfo().getAuthor();
-                        if(author == null)
-                            author = "Unknown";
-                        String description = pdfDocument.getDocumentInfo().getSubject();
-                        if(description == null)
-                            description = "No description";
-                        pdfDocument.close();
-                        File thumbnail = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/thumbnails/" + name + ".png");
-                        if (!thumbnail.exists()) {
-                            // Create thumbnail
-                            ParcelFileDescriptor fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
-                            PdfRenderer pdfRenderer = new PdfRenderer(fileDescriptor);
-                            PdfRenderer.Page page1 = pdfRenderer.openPage(0);
-                            Bitmap thumbnailImage = Bitmap.createBitmap(page1.getWidth(), page1.getHeight(), Bitmap.Config.ARGB_8888);
-                            page1.render(thumbnailImage, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                            FileOutputStream fileOutputStream = new FileOutputStream(thumbnail);
-                            thumbnailImage.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream);
-                            fileOutputStream.close();
-                            fileDescriptor.close();
-                        }
-                        PDFFile pdfFile = new PDFFile(title, author, description, path, thumbnail.getAbsolutePath(), 0, pages, false);
-                        pdfFiles.add(pdfFile);
-                    } catch (Exception e) {
-                        Log.e("PDFErr", "Error: " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
     }
 
     private boolean isPdfCacheAvailable() {
@@ -208,34 +151,30 @@ public class BrowserActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        //JSONArray pdfArray = new JSONArray();
         for (PDFFile pdfFile : pdfFiles) {
-            JSONObject pdfObj = new JSONObject();
-            try {
-                pdfObj.put("name", pdfFile.getName());
-                pdfObj.put("author", pdfFile.getAuthor());
-                pdfObj.put("description", pdfFile.getDescription());
-                pdfObj.put("path", pdfFile.getLocation());
-                pdfObj.put("thumbnailPath", pdfFile.getImagePath());
-                pdfObj.put("currPage", pdfFile.getCurrPage());
-                pdfObj.put("totalPages", pdfFile.getTotalPages());
-                pdfObj.put("isFav", pdfFile.getFavourite());
+            JSONObject pdfObj = pdfFile.toJSON();
+            assert pdfArray != null;
+            if(!pdfArray.toString().contains(pdfObj.toString()))
                 pdfArray.put(pdfObj);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
         }
+        assert pdfArray != null;
         editor.putString(PDF_CACHE_KEY, pdfArray.toString());
         editor.apply();
+        Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
     }
 
     private void loadCachedPDFFiles() {
         String pdfCacheJson = sharedPreferences.getString(PDF_CACHE_KEY, "[]");
+        Log.d("PDFErr", "Loading Cached PDF Files: " + pdfCacheJson);
         if (!pdfCacheJson.isEmpty()) {
             try {
                 JSONArray pdfArray = new JSONArray(pdfCacheJson);
                 Log.d("PDFErr", "Loading Cached PDF Files: " + pdfArray.length());
-                pdfFiles = new ArrayList<>();
+                if(pdfArray.length() == 0) {
+                    loadPDFFiles();
+                    return;
+                }
+                //pdfFiles = new ArrayList<>();
                 for (int i = 0; i < pdfArray.length(); i++) {
                     JSONObject pdfObj = pdfArray.getJSONObject(i);
                     PDFFile pdfFile = new PDFFile(
@@ -248,19 +187,22 @@ public class BrowserActivity extends AppCompatActivity {
                             pdfObj.getInt("totalPages"),
                             pdfObj.getBoolean("isFav")
                     );
+                    //Log.d("PDFErr", "Loading Cached PDF Files: " + pdfFile.getName() + " " + pdfFile.getAuthor() + " " + pdfFile.getDescription() + " " + pdfFile.getLocation() + " " + pdfFile.getImagePath() + " " + pdfFile.getCurrPage() + " " + pdfFile.getTotalPages() + " " + pdfFile.getFavourite());
                     pdfFiles.add(pdfFile);
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+            Log.d("PDFErr", "Finished loading Cached PDF Files: " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
+        } else {
+            loadPDFFiles();
         }
     }
 
     private void loadPDFFiles() {
         String favListPath = Environment.getExternalStorageDirectory() + "/ReaderForU/BookData/favlist.json";
-        JSONObject favList = new JSONObject(); // Initialize an empty JSONObject
+        JSONObject favList = new JSONObject();
         try {
-            // Read the contents of the file into a string
             StringBuilder stringBuilder = new StringBuilder();
             BufferedReader bufferedReader = new BufferedReader(new FileReader(favListPath));
             String line;
@@ -268,73 +210,104 @@ public class BrowserActivity extends AppCompatActivity {
                 stringBuilder.append(line);
             }
             bufferedReader.close();
-            // Parse the string as JSON and assign it to favList
             favList = new JSONObject(stringBuilder.toString());
         } catch (Exception e) {
             e.printStackTrace();
         }
-        //Log.d("PDFErr", "FavList: " + favList.toString());
-        //Log.e("PDFErr", "Loading PDF Files");
+        Log.e("PDFErr", "Loading PDF Files from storage...");
         // Load PDF files from the storage
         File folder = new File(Environment.getExternalStorageDirectory() + "/Documents");
         File[] files = folder.listFiles();
         File folder1 = new File(Environment.getExternalStorageDirectory() + "/Download");
         File[] files1 = folder1.listFiles();
-        ArrayList<File> allFiles = new ArrayList<File>();
-        Log.d("PDFErr", "Files: " + allFiles.toString() + " " + files + " " + files1);
+        ArrayList<File> allFiles = new ArrayList<>();
+        //Log.d("PDFErr", "Files: " + allFiles + " " + Arrays.toString(files) + " " + Arrays.toString(files1));
         if(files != null) {
-            for (File file : files) {
-                allFiles.add(file);
-            }
+            allFiles.addAll(Arrays.asList(files));
         }
         if(files1 != null) {
-            for (File file : files1) {
-                allFiles.add(file);
-            }
+            allFiles.addAll(Arrays.asList(files1));
         }
-        allFiles.sort(Comparator.comparing(File::getName));
+        allFiles.sort((o1, o2) -> {
+            String name1 = o1.getName();
+            String name2 = o2.getName();
+            if(name1.compareTo(name2) < 0)
+                return -1;
+            else if(name1.compareTo(name2) > 0)
+                return 1;
+            return 0;
+        });
         if(allFiles.size() != 0) {
             for (File file : allFiles) {
                 if (file.getName().endsWith(".pdf")) {
-                    String path = file.getAbsolutePath();
-                    String name = file.getName();
-                    try {
-                        PdfReader reader = new PdfReader(path);
-                        PdfDocument pdfDocument = new PdfDocument(reader);
-                        int pages = pdfDocument.getNumberOfPages();
-                        String title = pdfDocument.getDocumentInfo().getTitle();
-                        String author = pdfDocument.getDocumentInfo().getAuthor();
-                        if(author == null)
-                            author = "Unknown";
-                        String description = pdfDocument.getDocumentInfo().getSubject();
-                        if(description == null)
-                            description = "No description";
-                        pdfDocument.close();
-                        File thumbnail = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/thumbnails/" + name + ".png");
-                        if (!thumbnail.exists()) {
-                            // Create thumbnail
-                            ParcelFileDescriptor fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
-                            PdfRenderer pdfRenderer = new PdfRenderer(fileDescriptor);
-                            PdfRenderer.Page page = pdfRenderer.openPage(0);
-                            Bitmap thumbnailImage = Bitmap.createBitmap(page.getWidth(), page.getHeight(), Bitmap.Config.ARGB_8888);
-                            page.render(thumbnailImage, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                            FileOutputStream fileOutputStream = new FileOutputStream(thumbnail);
-                            thumbnailImage.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream);
-                            fileOutputStream.close();
-                            fileDescriptor.close();
-                        }
-                        boolean isFav = favList.has(name);
-                        int currPage = sharedPreferences.getInt(path + "nowPage", 0);
-                        //Log.e("PDFErr", "PDF File: " + name + " " + author + " " + description + " " + path + " " + thumbnail.getAbsolutePath() + " " + currPage + " " + pages);
-                        String bookName=(title==null)?name:title;
-                        PDFFile pdfFile = new PDFFile(bookName, author, description, path, thumbnail.getAbsolutePath(), currPage, pages, isFav);
-                        pdfFiles.add(pdfFile);
-                    } catch (Exception e) {
-                        Log.e("PDFErr", "Error: " + e.getMessage());
-                        e.printStackTrace();
-                    }
+                    addPdfFile(file, favList);
+                    String message="Scanning for PDF Files...\nFound "+pdfFiles.size()+" PDF Files";
+                    runOnUiThread(() -> statusText.setText(message));
+                    //Log.d("PDFErr", (String) statusText.getText());
                 }
             }
+            savePDFFilesToCache();
         }
+    }
+
+    private void addPdfFile(File file, JSONObject favList) {
+        String path = file.getAbsolutePath();
+        String name = file.getName();
+        try {
+            PdfReader reader = new PdfReader(path);
+            PdfDocument pdfDocument = new PdfDocument(reader);
+            int pages = pdfDocument.getNumberOfPages();
+            String title = pdfDocument.getDocumentInfo().getTitle();
+            String author = pdfDocument.getDocumentInfo().getAuthor();
+            if(author == null)
+                author = "Unknown";
+            String description = pdfDocument.getDocumentInfo().getSubject();
+            if(description == null)
+                description = "No description";
+            pdfDocument.close();
+            File thumbnail = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/thumbnails/" + name + ".png");
+            if (!thumbnail.exists()) {
+                // Create thumbnail
+                ParcelFileDescriptor fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+                PdfRenderer pdfRenderer = new PdfRenderer(fileDescriptor);
+                PdfRenderer.Page page = pdfRenderer.openPage(0);
+                Bitmap thumbnailImage = Bitmap.createBitmap(page.getWidth(), page.getHeight(), Bitmap.Config.ARGB_8888);
+                page.render(thumbnailImage, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                FileOutputStream fileOutputStream = new FileOutputStream(thumbnail);
+                thumbnailImage.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream);
+                fileOutputStream.close();
+                fileDescriptor.close();
+            }
+            boolean isFav = favList.has(path);
+            int currPage = sharedPreferences.getInt(path + "nowPage", 0);
+            //Log.e("PDFErr", "PDF File: " + name + " " + author + " " + description + " " + path + " " + thumbnail.getAbsolutePath() + " " + currPage + " " + pages);
+            String bookName=(title==null)?name:title;
+            PDFFile pdfFile = new PDFFile(bookName, author, description, path, thumbnail.getAbsolutePath(), currPage, pages, isFav);
+            pdfFiles.add(pdfFile);
+        } catch (Exception e) {
+            Log.e("PDFErr", "Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    public static void showAboutDialog(Context context) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("About ReaderForU");
+        builder.setMessage(
+                "ReaderForU is a simple PDF reader app.\n" +
+                "Developed by Raufun Ahsan\n" +
+                "Version 1.0.0\n" +
+                "© 2021 Taut0logy\n" +
+                "All rights reserved."
+        );
+        builder.setCancelable(true);
+        builder.setPositiveButton("GitHub", (dialog, which) -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.github.com/Taut0logy"));
+            context.startActivity(intent);
+        });
+        builder.setPositiveButton("Facebook", (dialog, which) -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.facebook.com/Taut0logy"));
+            context.startActivity(intent);
+        });
+        builder.create().show();
     }
 }

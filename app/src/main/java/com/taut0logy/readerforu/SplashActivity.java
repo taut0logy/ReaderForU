@@ -8,46 +8,55 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.content.DialogInterface;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 
+@SuppressLint("CustomSplashScreen")
 public class SplashActivity extends AppCompatActivity {
 
     private static final int READ_EXTERNAL_STORAGE_PERMISSION_CODE = 1;
-    private static boolean isPermissionPopupShown = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         getPermissions();
+
+    }
+
+    private void initApp() {
         File folder = new File(Environment.getExternalStorageDirectory() + "/ReaderForU");
+        boolean res = true;
+        if(!folder.exists()) {
+            res = folder.mkdir();
+        }
+        boolean res1 = true, res2 = true, res3 = true;
         if (!folder.exists()) {
-            folder.mkdir();
+            res1 = folder.mkdir();
         }
         File folder1 = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/thumbnails");
         if (!folder1.exists()) {
-            folder1.mkdir();
+            res2 = folder1.mkdir();
         }
         File folder2 = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/BookData");
         if (!folder2.exists()) {
-            folder2.mkdir();
+            res3 = folder2.mkdir();
+        }
+        if(!res || !res1 || !res2 || !res3) {
+            Toast.makeText(this, "Error creating directories", Toast.LENGTH_SHORT).show();
         }
         String location= Environment.getExternalStorageDirectory() + "/ReaderForU/BookData/favlist.json";
         File file = new File(location);
@@ -62,104 +71,54 @@ public class SplashActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                // Start the main activity (BrowserActivity)
-                Intent intent = new Intent(SplashActivity.this, BrowserActivity.class);
-                startActivity(intent);
-                finish();
-            }
-        }, 1000);
     }
-
     private void getPermissions() {
         //Android is 11 (R) or above
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if(Environment.isExternalStorageManager()) {
                 Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(SplashActivity.this, BrowserActivity.class);
+                initApp();
+                startActivity(intent);
+                finish();
             } else {
                 Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
-//                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-//                builder.setTitle("Permission Required");
-//                builder.setMessage("Storage permission is required to use this app.");
-//                builder.setPositiveButton("Grant Permission", new DialogInterface.OnClickListener() {
-//                    @Override
-//                    public void onClick(DialogInterface dialog, int which) {
-//                        // Request the storage permission again
-//                        requestStoragePermission();
-//                    }
-//                });
-//                builder.setCancelable(false); // Prevent dismissing dialog by tapping outside
-//                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-//                    @Override
-//                    public void onCancel(DialogInterface dialog) {
-//                        // Close the app if back button is pressed while the permission popup is shown
-//                        finish();
-//                    }
-//                });
-//                builder.create().show();
-                requestStoragePermission();
+                showPermissionDeniedPopup();
+                //requestStoragePermission();
             }
         } else {
             //Below android 11
-//            if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-//                AlertDialog.Builder builder = new AlertDialog.Builder(SplashActivity.this);
-//                builder.setTitle("Permission Required");
-//                builder.setMessage("Storage permission is required to use this app.");
-//                builder.setPositiveButton("Grant Permission", new DialogInterface.OnClickListener() {
-//                    @Override
-//                    public void onClick(DialogInterface dialog, int which) {
-//                        // Request the storage permission again
-//                        ActivityCompat.requestPermissions(SplashActivity.this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE_PERMISSION_CODE);
-//                    }
-//                });
-//                builder.setCancelable(false); // Prevent dismissing dialog by tapping outside
-//                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-//                    @Override
-//                    public void onCancel(DialogInterface dialog) {
-//                        // Close the app if back button is pressed while the permission popup is shown
-//                        finish();
-//                    }
-//                });
-//                builder.create().show();
                 ActivityCompat.requestPermissions(SplashActivity.this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE_PERMISSION_CODE);
+                if(ContextCompat.checkSelfPermission(SplashActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(SplashActivity.this, BrowserActivity.class);
+                    initApp();
+                    startActivity(intent);
+                    finish();
+                } else {
+                    Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
+                    showPermissionDeniedPopup();
+                    //requestStoragePermission();
+                }
             }
         }
 
 
     private void showPermissionDeniedPopup() {
-        isPermissionPopupShown = true;
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Permission Required");
         builder.setMessage("Storage permission is required to use this app.");
-        builder.setPositiveButton("Grant Permission", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // Request the storage permission again
-                Log.d("Permission", "Requesting storage permission again");
-                requestStoragePermission();
-            }
+        builder.setPositiveButton("Grant Permission", (dialog, which) -> {
+            // Request the storage permission again
+            Log.d("Permission", "Requesting storage permission again");
+            requestStoragePermission();
         });
         builder.setCancelable(false); // Prevent dismissing dialog by tapping outside
-        builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                // Close the app if back button is pressed while the permission popup is shown
-                finish();
-            }
-        });
-        builder.show();
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (isPermissionPopupShown) {
+        builder.setOnCancelListener(dialog -> {
             // Close the app if back button is pressed while the permission popup is shown
             finish();
-        } else {
-            super.onBackPressed();
-        }
+        });
+        builder.show();
     }
 
     private void requestStoragePermission() {
@@ -167,7 +126,7 @@ public class SplashActivity extends AppCompatActivity {
             try {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                 intent.addCategory("android.intent.category.DEFAULT");
-                intent.setData(Uri.parse(String.format("package:%s", new Object[]{getApplicationContext().getPackageName()})));
+                intent.setData(Uri.parse(String.format("package:%s", getApplicationContext().getPackageName())));
                 Log.d("Permission", "Requesting storage permission try");
                 storageActivityResultLauncher.launch(intent);
             } catch (Exception e) {
@@ -178,6 +137,7 @@ public class SplashActivity extends AppCompatActivity {
             }
         } else {
             ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE_PERMISSION_CODE);
+            initApp();
         }
     }
     private final ActivityResultLauncher<Intent> storageActivityResultLauncher = registerForActivityResult(
@@ -186,14 +146,24 @@ public class SplashActivity extends AppCompatActivity {
                 if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     if(Environment.isExternalStorageManager()) {
                         Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(SplashActivity.this, BrowserActivity.class);
+                        initApp();
+                        startActivity(intent);
+                        finish();
                     } else {
                         Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
+                        finish();
                     }
                 } else {
                     if(result.getResultCode() == RESULT_OK) {
                         Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(SplashActivity.this, BrowserActivity.class);
+                        initApp();
+                        startActivity(intent);
+                        finish();
                     } else {
                         Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
+                        finish();
                     }
                 }
             }

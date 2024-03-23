@@ -4,8 +4,9 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.widget.Button;
 import android.widget.EditText;
@@ -15,20 +16,22 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
 
-public class EditActivity extends AppCompatActivity {
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
-    private Toolbar toolbar;
-    private ImageView imageView;
+public class EditActivity extends AppCompatActivity {
     private EditText etName, etAuthor, etDescription, etCreator;
     private PDFFile pdfFile;
     int position;
+    private static final String PDF_CACHE_KEY = "pdf_cache";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_edit);
-        toolbar = findViewById(R.id.edit_toolbar);
-        imageView = findViewById(R.id.bookImageViewEdit);
+        Toolbar toolbar = findViewById(R.id.edit_toolbar);
+        ImageView imageView = findViewById(R.id.bookImageViewEdit);
         etName = findViewById(R.id.bookNameEdit);
         etAuthor = findViewById(R.id.authorEdit);
         etDescription = findViewById(R.id.descriptionEdit);
@@ -43,19 +46,21 @@ public class EditActivity extends AppCompatActivity {
             builder.setTitle("Save Changes");
             builder.setMessage("Are you sure you want to save the changes?");
             builder.setPositiveButton("Yes", (dialog, which) -> {
-                saveChanges();
+                try {
+                    saveChanges();
+                } catch (JSONException e) {
+                    Log.e("EditActivity", "onCreate: ", e);
+                    e.printStackTrace();
+                }
                 finish();
             });
-            builder.setNegativeButton("No", (dialog, which) -> {
-                dialog.dismiss();
-            });
+            builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
             builder.create().show();
         });
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if(id == R.id.action_about_edit) {
-                Intent intent = new Intent(this, AboutActivity.class);
-                startActivity(intent);
+                BrowserActivity.showAboutDialog(this);
                 return true;
             }
             if(id == R.id.action_exit_edit) {
@@ -66,7 +71,7 @@ public class EditActivity extends AppCompatActivity {
         });
     }
 
-    private void saveChanges() {
+    private void saveChanges() throws JSONException {
         String name = etName.getText().toString();
         String author = etAuthor.getText().toString();
         String description = etDescription.getText().toString();
@@ -77,24 +82,40 @@ public class EditActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        assert reader != null;
         PdfDocument pdfDocument = new PdfDocument(reader);
+        JSONObject pdfData = pdfFile.toJSON();
         PdfDocumentInfo info = pdfDocument.getDocumentInfo();
         if(!name.isEmpty()) {
             info.setTitle(name);
             pdfFile.setName(name);
+            pdfData.put("name", name);
         }
         if(!author.isEmpty()) {
             info.setAuthor(author);
             pdfFile.setAuthor(author);
+            pdfData.put("author", author);
         }
         if(!description.isEmpty()) {
             info.setSubject(description);
             pdfFile.setDescription(description);
+            pdfData.put("description", description);
         }
         if(!creator.isEmpty()) {
             info.setCreator(creator);
         }
-        BrowserActivity.getPdfFiles().set(position, pdfFile);
+        BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
+        SharedPreferences sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        try {
+            JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+            jsonArray.put(position, pdfFile.toJSON());
+            editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+            editor.apply();
+        } catch (JSONException e) {
+            Log.e("EditActivity", "saveChanges: ", e);
+            e.printStackTrace();
+        }
         pdfDocument.close();
     }
 

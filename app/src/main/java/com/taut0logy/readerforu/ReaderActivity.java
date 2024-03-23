@@ -6,16 +6,13 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.preference.Preference;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.github.barteksc.pdfviewer.PDFView;
-import com.github.barteksc.pdfviewer.listener.OnPageChangeListener;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -23,20 +20,14 @@ import org.json.JSONObject;
 
 import java.io.File;
 
-import javax.sql.DataSource;
-
 public class ReaderActivity extends AppCompatActivity implements JumpToPageFragment.JumpToPageListener {
     private static final String PDF_CACHE_KEY = "pdf_cache";
-    PDFFile pdfFile;
+    private PDFFile pdfFile;
+    private TextView etCurrPage;
     private boolean barsVisible = true;
     private int recyclerPosition;
     private ConstraintLayout topBar,bottomBar;
-    private TextView tvBookName,tvAuthorName,tvTotalPages,tvCurrPage,etCurrPage;
-    private Button showDialog;
-    private ImageButton toggleDark,infobtn;
-    private ConstraintLayout dialog;
     private PDFView pdfView;
-    private String location;
     private boolean isNight=false;
     private int nowPage=0;
     private SharedPreferences sharedPreferences;
@@ -45,6 +36,9 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reader);
+        TextView tvBookName,tvAuthorName,tvTotalPages;
+        ImageButton toggleDark, infoBtn;
+        Button showDialog;
         pdfView=findViewById(R.id.pdfView);
         topBar=findViewById(R.id.topBar);
         bottomBar=findViewById(R.id.bottomBar);
@@ -53,7 +47,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         tvTotalPages=findViewById(R.id.tvTotalPage);
         etCurrPage=findViewById(R.id.etCurrentPage);
         toggleDark=findViewById(R.id.toggleDark);
-        infobtn=findViewById(R.id.infobtn);
+        infoBtn =findViewById(R.id.infobtn);
         showDialog=findViewById(R.id.showDialog);
         recyclerPosition = getIntent().getIntExtra("position", 0);
         pdfFile = BrowserActivity.getPdfFiles().get(recyclerPosition);
@@ -61,34 +55,23 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         tvBookName.setText(pdfFile.getName());
         tvAuthorName.setText(pdfFile.getAuthor());
         tvTotalPages.setText(String.valueOf(pdfFile.getTotalPages()));
-        location = pdfFile.getLocation();
-        toggleDark.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(isNight) {
-                    pdfView.setNightMode(false);
-                    isNight = false;
-                }
-                else {
-                    pdfView.setNightMode(true);
-                    isNight = true;
-                }
+        String location = pdfFile.getLocation();
+        toggleDark.setOnClickListener(v -> {
+            if(isNight) {
+                pdfView.setNightMode(false);
+                isNight = false;
+            }
+            else {
+                pdfView.setNightMode(true);
+                isNight = true;
             }
         });
-        showDialog.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showJumpToPageDialog(pdfFile.getTotalPages(),nowPage);
-            }
-        });
+        showDialog.setOnClickListener(v -> showJumpToPageDialog(pdfFile.getTotalPages(),nowPage));
 
-        infobtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent=new Intent(ReaderActivity.this,InfoActivity.class);
-                intent.putExtra("position",recyclerPosition);
-                startActivity(intent);
-            }
+        infoBtn.setOnClickListener(v -> {
+            Intent intent=new Intent(ReaderActivity.this,InfoActivity.class);
+            intent.putExtra("position",recyclerPosition);
+            startActivity(intent);
         });
         loadPdf(location);
     }
@@ -138,55 +121,35 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         nowPage = sharedPreferences.getInt(pdfFile.getLocation()+"nowPage", 0);
     }
 
-    private void loadPDFInBackground() {
-        // Load the PDF file in the background
-        // This method should be called in the background thread
-        // because it may take a long time to load the PDF file
-        // and we don't want to block the UI thread
-        // while the file is being loaded
-    }
-
     private void loadPdf(String location) {
         File file = new File(location);
         PDFView.Configurator configurator = pdfView.fromFile(file);
         configurator.defaultPage(nowPage-1);
         configurator.load();
         configurator.scrollHandle(new com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle(this));
-        configurator.onPageChange(new OnPageChangeListener() {
-            @Override
-            public void onPageChanged(int page, int pageCount) {
-                etCurrPage.setText(String.valueOf(page+1));
-                nowPage = page+1;
-            }
+        configurator.onPageChange((page, pageCount) -> {
+            etCurrPage.setText(String.valueOf(page+1));
+            nowPage = page+1;
         });
 
-        configurator.onPageScroll(new com.github.barteksc.pdfviewer.listener.OnPageScrollListener() {
-            @Override
-            public void onPageScrolled(int page, float positionOffset) {
-                //get direction of scroll
-                if(positionOffset>0) {
-                    //scrolling down
-                    if(barsVisible) {
-                        hideBarsWithAnimation();
-                    }
+        configurator.onPageScroll((page, positionOffset) -> {
+            //get direction of scroll
+            if(positionOffset>0) {
+                //scrolling down
+                if(barsVisible) {
+                    hideBarsWithAnimation();
                 }
-                else {
-                    //scrolling up
-                    if(!barsVisible) {
-                        showBarsWithAnimation();
-                    }
+            }
+            else {
+                //scrolling up
+                if(!barsVisible) {
+                    showBarsWithAnimation();
                 }
             }
         });
-
-
-
-        configurator.onTap(new com.github.barteksc.pdfviewer.listener.OnTapListener() {
-            @Override
-            public boolean onTap(MotionEvent e) {
-                toggleBarsVisibility();
-                return true;
-            }
+        configurator.onTap(e -> {
+            toggleBarsVisibility();
+            return true;
         });
     }
     private void showJumpToPageDialog(int totalPage,int curPage) {
