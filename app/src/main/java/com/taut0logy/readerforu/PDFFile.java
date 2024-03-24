@@ -18,8 +18,9 @@ public class PDFFile implements Serializable {
     private int currPage;
     private final int totalPages;
     private boolean isFavourite;
+    private long modified, lastRead;
 
-    public PDFFile(String name, String author, String description, String location, String imagePath, int currPage, int totalPages, boolean isFavourite) {
+    public PDFFile(String name, String author, String description, String location, String imagePath, int currPage, int totalPages, boolean isFavourite, long modified, long lastRead) {
         this.name = name;
         this.author = author;
         this.description = description;
@@ -28,6 +29,8 @@ public class PDFFile implements Serializable {
         this.currPage = currPage;
         this.totalPages = totalPages;
         this.isFavourite = isFavourite;
+        this.modified = modified;
+        this.lastRead = lastRead;
     }
 
     public String getName() {
@@ -61,6 +64,14 @@ public class PDFFile implements Serializable {
         return isFavourite;
     }
 
+    public long getModified() {
+        return modified;
+    }
+
+    public long getLastRead() {
+        return lastRead;
+    }
+
     public Bitmap getThumbnail() {
         File file = new File(imagePath);
         return BitmapFactory.decodeFile(file.getAbsolutePath());
@@ -90,6 +101,10 @@ public class PDFFile implements Serializable {
         this.currPage = currPage;
     }
 
+    public void setLastRead(long lastRead) {
+        this.lastRead = lastRead;
+    }
+
     public void setFavourite(boolean isFavourite) {
         this.isFavourite = isFavourite;
     }
@@ -104,6 +119,8 @@ public class PDFFile implements Serializable {
             pdfObj.put("currPage", currPage);
             pdfObj.put("totalPages", totalPages);
             pdfObj.put("isFav", isFavourite);
+            pdfObj.put("modified", modified);
+            pdfObj.put("lastRead", lastRead);
         } catch (JSONException e) {
             e.printStackTrace();
         }

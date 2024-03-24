@@ -4,6 +4,7 @@ package com.taut0logy.readerforu;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -31,6 +32,7 @@ public class InfoActivity extends AppCompatActivity {
     private static final String PDF_CACHE_KEY = "pdf_cache";
     private Toolbar toolbar;
     private PDFFile pdfFile;
+    @SuppressLint("NotifyDataSetChanged")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,6 +49,7 @@ public class InfoActivity extends AppCompatActivity {
         modified = findViewById(R.id.modified);
         location = findViewById(R.id.path);
         setSupportActionBar(toolbar);
+        int position = getIntent().getIntExtra("position", 0);
         pdfFile = BrowserActivity.getPdfFiles().get(getIntent().getIntExtra("position", 0));
         imageView.setImageBitmap(pdfFile.getThumbnail());
         bookName.setText(pdfFile.getName());
@@ -70,25 +73,26 @@ public class InfoActivity extends AppCompatActivity {
             int id = item.getItemId();
             if(id == R.id.action_favourite) {
                 MenuItem favButton = toolbar.getMenu().findItem(R.id.action_favourite);
-                JSONObject jsonObject = BrowserActivity.getPdfFileAdapter().getFavList();
-                // Update JSON data based on button click
-                if (pdfFile.getFavourite()) {
-                    pdfFile.setFavourite(false);
-                    jsonObject.remove(pdfFile.getLocation());
-                    favButton.setIcon(R.drawable.baseline_star_border_24);
-                } else {
-                    pdfFile.setFavourite(true);
-                    try {
-                        jsonObject.put(pdfFile.getLocation(), true);
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
+                pdfFile.setFavourite(!pdfFile.getFavourite());
+                if(pdfFile.getFavourite()) {
                     favButton.setIcon(R.drawable.baseline_star_24);
+                    BrowserActivity.getFavPdfFiles().add(pdfFile);
+                } else {
+                    favButton.setIcon(R.drawable.baseline_star_border_24);
+                    BrowserActivity.getFavPdfFiles().remove(pdfFile);
                 }
-                BrowserActivity.getPdfFiles().get(getIntent().getIntExtra("position", 0)).setFavourite(pdfFile.getFavourite());
-                BrowserActivity.getPdfFileAdapter().notifyItemChanged(getIntent().getIntExtra("position", 0));
-                // Write updated JSON data back to the file
-                BrowserActivity.getPdfFileAdapter().writeFavList(jsonObject);
+                SharedPreferences sharedPreferences = getSharedPreferences("reader", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                try {
+                    JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+                    jsonArray.put(position, pdfFile.toJSON());
+                    editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+                    editor.apply();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                BrowserActivity.getPdfFiles().get(position).setFavourite(pdfFile.getFavourite());
+                BrowserActivity.getPdfFileAdapter().notifyItemChanged(position);
                 return true;
             }
             if(id == R.id.action_about) {
@@ -109,7 +113,6 @@ public class InfoActivity extends AppCompatActivity {
                 builder.setPositiveButton("Yes", (dialog, which) -> {
                     File file = new File(pdfFile.getLocation());
                     if(file.delete()) {
-                        int position = getIntent().getIntExtra("position", 0);
                         SharedPreferences sharedPreferences = getSharedPreferences("reader", Context.MODE_PRIVATE);
                         SharedPreferences.Editor editor = sharedPreferences.edit();
                         editor.remove(BrowserActivity.getPdfFiles().get(position).getLocation());
@@ -118,9 +121,9 @@ public class InfoActivity extends AppCompatActivity {
                             jsonArray.remove(position);
                             editor.putString(PDF_CACHE_KEY, jsonArray.toString());
                             editor.apply();
-                            JSONObject jsonObject = BrowserActivity.getPdfFileAdapter().getFavList();
-                            jsonObject.remove(BrowserActivity.getPdfFiles().get(position).getLocation());
-                            BrowserActivity.getPdfFileAdapter().writeFavList(jsonObject);
+//                            JSONObject jsonObject = BrowserActivity.getPdfFileAdapter().getFavList();
+//                            jsonObject.remove(BrowserActivity.getPdfFiles().get(position).getLocation());
+//                            BrowserActivity.getPdfFileAdapter().writeFavList(jsonObject);
                             File thumbnail = new File(BrowserActivity.getPdfFiles().get(position).getImagePath());
                             boolean res=thumbnail.delete();
                             if(res) {

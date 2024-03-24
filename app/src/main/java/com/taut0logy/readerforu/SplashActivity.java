@@ -58,19 +58,6 @@ public class SplashActivity extends AppCompatActivity {
         if(!res || !res1 || !res2 || !res3) {
             Toast.makeText(this, "Error creating directories", Toast.LENGTH_SHORT).show();
         }
-        String location= Environment.getExternalStorageDirectory() + "/ReaderForU/BookData/favlist.json";
-        File file = new File(location);
-        if (!file.exists()) {
-            try {
-                JSONObject jsonObject = new JSONObject();
-                FileWriter fileWriter = new FileWriter(location);
-                fileWriter.write(jsonObject.toString());
-                fileWriter.flush();
-                fileWriter.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
     }
     private void getPermissions() {
         //Android is 11 (R) or above

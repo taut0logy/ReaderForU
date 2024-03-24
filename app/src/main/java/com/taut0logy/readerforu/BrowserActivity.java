@@ -18,6 +18,10 @@ import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.view.Menu;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -27,25 +31,29 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 public class BrowserActivity extends AppCompatActivity {
     private static ArrayList<PDFFile> pdfFiles;
+    private static ArrayList<PDFFile> favPdfFiles;
     @SuppressLint("StaticFieldLeak")
     private static PDFFileAdapter pdfFileAdapter;
     private TextView statusText;
     private SharedPreferences sharedPreferences;
     Toolbar toolbar;
     private static final String PDF_CACHE_KEY = "pdf_cache";
+    protected static boolean favouritesFirst = true;
+    protected static int sortParameter = 1;
+    protected static int sortDirection = 1;
     protected static ArrayList<PDFFile> getPdfFiles() {
         return pdfFiles;
     }
-
+    protected static ArrayList<PDFFile> getFavPdfFiles() {
+        return favPdfFiles;
+    }
     protected static PDFFileAdapter getPdfFileAdapter() {
         return pdfFileAdapter;
     }
@@ -60,6 +68,7 @@ public class BrowserActivity extends AppCompatActivity {
         statusText = findViewById(R.id.tvStatus);
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         pdfFiles = new ArrayList<>();
+        favPdfFiles = new ArrayList<>();
         setSupportActionBar(toolbar);
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
@@ -82,8 +91,8 @@ public class BrowserActivity extends AppCompatActivity {
                     }).start();
                     return true;
                 }
-                if(id == R.id.action_search) {
-                    startActivity(new Intent(BrowserActivity.this, SearchActivity.class));
+                if(id == R.id.action_filter) {
+                    showFilterDialog(BrowserActivity.this);
                     return true;
                 }
                 if(id == R.id.action_about) {
@@ -102,7 +111,6 @@ public class BrowserActivity extends AppCompatActivity {
         statusText.setVisibility(TextView.VISIBLE);
         statusText.setText(R.string.loading_pdf_files);
         new Thread(() -> {
-            //loadPDFFiles();
             if (isPdfCacheAvailable()) {
                 loadCachedPDFFiles();
             } else {
@@ -115,6 +123,90 @@ public class BrowserActivity extends AppCompatActivity {
         }).start();
         savePDFFilesToCache();
     }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private void showFilterDialog(Context context) {
+        // Inside your activity or fragment
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+            // Inflate the layout for the dialog
+            View dialogView = getLayoutInflater().inflate(R.layout.dialog_filter, null);
+            builder.setView(dialogView);
+
+            CheckBox checkBoxFavorites = dialogView.findViewById(R.id.checkBoxFavourites);
+            RadioGroup radioGroupSortingParameters = dialogView.findViewById(R.id.radioGroupSortingParameters);
+            RadioGroup radioGroupSortingOrder = dialogView.findViewById(R.id.radioGroupSortingOrder);
+
+            // Add buttons to apply or cancel the filter and sort options
+            Button buttonApply = dialogView.findViewById(R.id.buttonApply);
+            Button buttonCancel = dialogView.findViewById(R.id.buttonCancel);
+
+            AlertDialog dialog = builder.create();
+            if(favouritesFirst)
+                checkBoxFavorites.setChecked(true);
+            switch (sortParameter) {
+                case 1:
+                    radioGroupSortingParameters.check(R.id.radioButtonTitle);
+                    break;
+                case 2:
+                    radioGroupSortingParameters.check(R.id.radioButtonAuthor);
+                    break;
+                case 3:
+                    radioGroupSortingParameters.check(R.id.radioButtonModified);
+                    break;
+                case 4:
+                    radioGroupSortingParameters.check(R.id.radioButtonLastRead);
+                    break;
+                default:
+                    radioGroupSortingParameters.check(R.id.radioButtonTitle);
+            }
+            switch (sortDirection) {
+                case 1:
+                    radioGroupSortingOrder.check(R.id.radioButtonAscending);
+                    break;
+                case 2:
+                    radioGroupSortingOrder.check(R.id.radioButtonDescending);
+                    break;
+                default:
+                    radioGroupSortingOrder.check(R.id.radioButtonAscending);
+            }
+
+            buttonApply.setOnClickListener(v -> {
+                // Apply the selected filter and sort options
+                favouritesFirst = checkBoxFavorites.isChecked();
+
+                int selectedSortingParameterId = radioGroupSortingParameters.getCheckedRadioButtonId();
+                // Handle selected sorting parameter option
+                if(selectedSortingParameterId == R.id.radioButtonTitle)
+                    sortParameter = 1;
+                else if(selectedSortingParameterId == R.id.radioButtonAuthor)
+                    sortParameter = 2;
+                else if(selectedSortingParameterId == R.id.radioButtonModified)
+                    sortParameter = 3;
+                else if(selectedSortingParameterId == R.id.radioButtonLastRead)
+                    sortParameter = 4;
+                else sortParameter = 1;
+
+                int selectedSortingOrderId = radioGroupSortingOrder.getCheckedRadioButtonId();
+                // Handle selected sorting order option
+                if(selectedSortingOrderId == R.id.radioButtonAscending)
+                    sortDirection = 1;
+                else if(selectedSortingOrderId == R.id.radioButtonDescending)
+                    sortDirection = 2;
+                else sortDirection = 1;
+                // Sort the PDF files according to the selected options and notify the adapter
+                pdfFiles.sort(this::comparePDFFiles);
+                pdfFileAdapter.notifyDataSetChanged();
+                // Dismiss the dialog
+                dialog.dismiss();
+            });
+
+            buttonCancel.setOnClickListener(v -> {
+                // Dismiss the dialog without applying any changes
+                dialog.dismiss();
+            });
+
+            dialog.show();
+        }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -137,6 +229,22 @@ public class BrowserActivity extends AppCompatActivity {
         savePDFFilesToCache();
     }
 
+    @SuppressLint("NotifyDataSetChanged")
+    @Override
+    protected void onStart() {
+        super.onStart();
+        pdfFiles.sort(this::comparePDFFiles);
+        pdfFileAdapter.notifyDataSetChanged();
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    @Override
+    protected void onResume() {
+        super.onResume();
+        pdfFiles.sort(this::comparePDFFiles);
+        pdfFileAdapter.notifyDataSetChanged();
+    }
+
     private boolean isPdfCacheAvailable() {
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         return sharedPreferences.contains(PDF_CACHE_KEY);
@@ -144,23 +252,21 @@ public class BrowserActivity extends AppCompatActivity {
 
     private void savePDFFilesToCache() {
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
-        JSONArray pdfArray = null;
+        JSONArray pdfArray;
         try {
             pdfArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            for (PDFFile pdfFile : pdfFiles) {
+                JSONObject pdfObj = pdfFile.toJSON();
+                if(!pdfArray.toString().contains(pdfObj.getString("path")))
+                    pdfArray.put(pdfObj);
+            }
+            editor.putString(PDF_CACHE_KEY, pdfArray.toString());
+            editor.apply();
+            Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        for (PDFFile pdfFile : pdfFiles) {
-            JSONObject pdfObj = pdfFile.toJSON();
-            assert pdfArray != null;
-            if(!pdfArray.toString().contains(pdfObj.toString()))
-                pdfArray.put(pdfObj);
-        }
-        assert pdfArray != null;
-        editor.putString(PDF_CACHE_KEY, pdfArray.toString());
-        editor.apply();
-        Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
     }
 
     private void loadCachedPDFFiles() {
@@ -185,14 +291,19 @@ public class BrowserActivity extends AppCompatActivity {
                             pdfObj.getString("thumbnailPath"),
                             pdfObj.getInt("currPage"),
                             pdfObj.getInt("totalPages"),
-                            pdfObj.getBoolean("isFav")
+                            pdfObj.getBoolean("isFav"),
+                            pdfObj.getLong("modified"),
+                            pdfObj.getLong("lastRead")
                     );
                     //Log.d("PDFErr", "Loading Cached PDF Files: " + pdfFile.getName() + " " + pdfFile.getAuthor() + " " + pdfFile.getDescription() + " " + pdfFile.getLocation() + " " + pdfFile.getImagePath() + " " + pdfFile.getCurrPage() + " " + pdfFile.getTotalPages() + " " + pdfFile.getFavourite());
                     pdfFiles.add(pdfFile);
+                    if(pdfFile.getFavourite())
+                        favPdfFiles.add(pdfFile);
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+            pdfFiles.sort(this::comparePDFFiles);
             Log.d("PDFErr", "Finished loading Cached PDF Files: " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
         } else {
             loadPDFFiles();
@@ -200,20 +311,6 @@ public class BrowserActivity extends AppCompatActivity {
     }
 
     private void loadPDFFiles() {
-        String favListPath = Environment.getExternalStorageDirectory() + "/ReaderForU/BookData/favlist.json";
-        JSONObject favList = new JSONObject();
-        try {
-            StringBuilder stringBuilder = new StringBuilder();
-            BufferedReader bufferedReader = new BufferedReader(new FileReader(favListPath));
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                stringBuilder.append(line);
-            }
-            bufferedReader.close();
-            favList = new JSONObject(stringBuilder.toString());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         Log.e("PDFErr", "Loading PDF Files from storage...");
         // Load PDF files from the storage
         File folder = new File(Environment.getExternalStorageDirectory() + "/Documents");
@@ -228,29 +325,21 @@ public class BrowserActivity extends AppCompatActivity {
         if(files1 != null) {
             allFiles.addAll(Arrays.asList(files1));
         }
-        allFiles.sort((o1, o2) -> {
-            String name1 = o1.getName();
-            String name2 = o2.getName();
-            if(name1.compareTo(name2) < 0)
-                return -1;
-            else if(name1.compareTo(name2) > 0)
-                return 1;
-            return 0;
-        });
         if(allFiles.size() != 0) {
             for (File file : allFiles) {
                 if (file.getName().endsWith(".pdf")) {
-                    addPdfFile(file, favList);
+                    addPdfFile(file);
                     String message="Scanning for PDF Files...\nFound "+pdfFiles.size()+" PDF Files";
                     runOnUiThread(() -> statusText.setText(message));
                     //Log.d("PDFErr", (String) statusText.getText());
                 }
             }
+            pdfFiles.sort(this::comparePDFFiles);
             savePDFFilesToCache();
         }
     }
 
-    private void addPdfFile(File file, JSONObject favList) {
+    private void addPdfFile(File file) {
         String path = file.getAbsolutePath();
         String name = file.getName();
         try {
@@ -259,11 +348,12 @@ public class BrowserActivity extends AppCompatActivity {
             int pages = pdfDocument.getNumberOfPages();
             String title = pdfDocument.getDocumentInfo().getTitle();
             String author = pdfDocument.getDocumentInfo().getAuthor();
-            if(author == null)
+            if(author == null || author.isEmpty() || author.equals("null"))
                 author = "Unknown";
             String description = pdfDocument.getDocumentInfo().getSubject();
-            if(description == null)
+            if(description == null || description.isEmpty() || description.equals("null"))
                 description = "No description";
+            boolean isFav = pdfDocument.getDocumentInfo().getMoreInfo("favourite")!= null && pdfDocument.getDocumentInfo().getMoreInfo("favourite").equals("true");
             pdfDocument.close();
             File thumbnail = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/thumbnails/" + name + ".png");
             if (!thumbnail.exists()) {
@@ -278,12 +368,16 @@ public class BrowserActivity extends AppCompatActivity {
                 fileOutputStream.close();
                 fileDescriptor.close();
             }
-            boolean isFav = favList.has(path);
+            //boolean isFav = favList.has(path);
             int currPage = sharedPreferences.getInt(path + "nowPage", 0);
+            long lastRead = sharedPreferences.getLong(path + "_lastRead", 0);
+            long modified = file.lastModified();
             //Log.e("PDFErr", "PDF File: " + name + " " + author + " " + description + " " + path + " " + thumbnail.getAbsolutePath() + " " + currPage + " " + pages);
-            String bookName=(title==null)?name:title;
-            PDFFile pdfFile = new PDFFile(bookName, author, description, path, thumbnail.getAbsolutePath(), currPage, pages, isFav);
+            String bookName=(title==null || title.isEmpty() || title.equals("null"))?name:title;
+            PDFFile pdfFile = new PDFFile(bookName, author, description, path, thumbnail.getAbsolutePath(), currPage, pages, isFav, modified, lastRead);
             pdfFiles.add(pdfFile);
+            if(isFav)
+                favPdfFiles.add(pdfFile);
         } catch (Exception e) {
             Log.e("PDFErr", "Error: " + e.getMessage());
             e.printStackTrace();
@@ -304,10 +398,36 @@ public class BrowserActivity extends AppCompatActivity {
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.github.com/Taut0logy"));
             context.startActivity(intent);
         });
-        builder.setPositiveButton("Facebook", (dialog, which) -> {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.facebook.com/Taut0logy"));
+        builder.setNegativeButton("Facebook", (dialog, which) -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.facebook.com/raufun.ahsan"));
+            context.startActivity(intent);
+        });
+        builder.setNeutralButton("Email", (dialog, which) -> {
+            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:raufun.ahsan@gmail.com"));
             context.startActivity(intent);
         });
         builder.create().show();
+    }
+
+    public int comparePDFFiles(PDFFile pdfFile1, PDFFile pdfFile2) {
+        if(favouritesFirst) {
+            if(pdfFile1.getFavourite() && !pdfFile2.getFavourite()) {
+                return -1;
+            } else if(!pdfFile1.getFavourite() && pdfFile2.getFavourite()) {
+                return 1;
+            }
+        }
+        switch (sortParameter) {
+            case 1:
+                return pdfFile1.getName().compareTo(pdfFile2.getName())*sortDirection;
+            case 2:
+                return pdfFile1.getAuthor().compareTo(pdfFile2.getAuthor())*sortDirection;
+            case 3:
+                return (int) (pdfFile1.getModified()-pdfFile2.getModified())*sortDirection;
+            case 4:
+                return (int) (pdfFile2.getLastRead()-pdfFile1.getLastRead())*sortDirection;
+            default:
+                return 0;
+        }
     }
 }
