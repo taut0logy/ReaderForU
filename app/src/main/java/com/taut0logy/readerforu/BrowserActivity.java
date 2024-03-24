@@ -333,7 +333,7 @@ public class BrowserActivity extends AppCompatActivity {
         if(files1 != null) {
             allFiles.addAll(Arrays.asList(files1));
         }
-        if(allFiles.size() != 0) {
+        if(!allFiles.isEmpty()) {
             for (File file : allFiles) {
                 if (file.getName().endsWith(".pdf")) {
                     addPdfFile(file);
@@ -341,6 +341,9 @@ public class BrowserActivity extends AppCompatActivity {
                     runOnUiThread(() -> statusText.setText(message));
                     //Log.d("PDFErr", (String) statusText.getText());
                 }
+            }
+            if(pdfFiles.isEmpty()) {
+                runOnUiThread(() -> statusText.setText("No PDF Files found"));
             }
             pdfFiles.sort(this::comparePDFFiles);
             savePDFFilesToCache();
