@@ -70,6 +70,9 @@ public class BrowserActivity extends AppCompatActivity {
         pdfFiles = new ArrayList<>();
         favPdfFiles = new ArrayList<>();
         setSupportActionBar(toolbar);
+        favouritesFirst = sharedPreferences.getBoolean("favouritesFirst", true);
+        sortParameter = sharedPreferences.getInt("sortParameter", 1);
+        sortDirection = sharedPreferences.getInt("sortDirection", 1);
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
                 if(id == R.id.action_refresh) {
@@ -198,6 +201,11 @@ public class BrowserActivity extends AppCompatActivity {
                 pdfFileAdapter.notifyDataSetChanged();
                 // Dismiss the dialog
                 dialog.dismiss();
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putInt("sortParameter", sortParameter);
+                editor.putInt("sortDirection", sortDirection);
+                editor.putBoolean("favouritesFirst", favouritesFirst);
+                editor.apply();
             });
 
             buttonCancel.setOnClickListener(v -> {
@@ -255,12 +263,12 @@ public class BrowserActivity extends AppCompatActivity {
         JSONArray pdfArray;
         try {
             pdfArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-            SharedPreferences.Editor editor = sharedPreferences.edit();
             for (PDFFile pdfFile : pdfFiles) {
                 JSONObject pdfObj = pdfFile.toJSON();
-                if(!pdfArray.toString().contains(pdfObj.getString("path")))
+                if(!pdfArray.toString().contains(pdfObj.toString()))
                     pdfArray.put(pdfObj);
             }
+            SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putString(PDF_CACHE_KEY, pdfArray.toString());
             editor.apply();
             Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
@@ -342,6 +350,9 @@ public class BrowserActivity extends AppCompatActivity {
     private void addPdfFile(File file) {
         String path = file.getAbsolutePath();
         String name = file.getName();
+        long modified = file.lastModified();
+        int currPage = sharedPreferences.getInt(path + "nowPage", 0);
+        long lastRead = sharedPreferences.getLong(path + "_lastRead", 0);
         try {
             PdfReader reader = new PdfReader(path);
             PdfDocument pdfDocument = new PdfDocument(reader);
@@ -369,9 +380,6 @@ public class BrowserActivity extends AppCompatActivity {
                 fileDescriptor.close();
             }
             //boolean isFav = favList.has(path);
-            int currPage = sharedPreferences.getInt(path + "nowPage", 0);
-            long lastRead = sharedPreferences.getLong(path + "_lastRead", 0);
-            long modified = file.lastModified();
             //Log.e("PDFErr", "PDF File: " + name + " " + author + " " + description + " " + path + " " + thumbnail.getAbsolutePath() + " " + currPage + " " + pages);
             String bookName=(title==null || title.isEmpty() || title.equals("null"))?name:title;
             PDFFile pdfFile = new PDFFile(bookName, author, description, path, thumbnail.getAbsolutePath(), currPage, pages, isFav, modified, lastRead);

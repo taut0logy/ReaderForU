@@ -104,11 +104,13 @@ public class EditActivity extends AppCompatActivity {
         if(!creator.isEmpty()) {
             info.setCreator(creator);
         }
+        pdfFile.setModified(System.currentTimeMillis());
         BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
         SharedPreferences sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         try {
             JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+            jsonArray.remove(position);
             jsonArray.put(position, pdfFile.toJSON());
             editor.putString(PDF_CACHE_KEY, jsonArray.toString());
             editor.apply();

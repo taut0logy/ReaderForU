@@ -36,7 +36,9 @@
 
     <EditText
         android:id="@+id/bookNameEdit"
-        android:layout_width="match_parent"
+        android:ems="18"
+        android:maxEms="50"
+        android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_marginStart="20dp"
         android:layout_marginTop="20dp"
@@ -54,8 +56,9 @@
 
     <EditText
         android:id="@+id/authorEdit"
-        android:maxWidth="300dp"
-        android:layout_width="match_parent"
+        android:ems="18"
+        android:maxEms="50"
+        android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_marginStart="20dp"
         android:layout_marginTop="20dp"
@@ -73,7 +76,9 @@
 
     <EditText
         android:id="@+id/descriptionEdit"
-        android:layout_width="match_parent"
+        android:ems="18"
+        android:maxEms="50"
+        android:layout_width="wrap_content"
         android:layout_height="180dp"
         android:gravity="start"
         android:layout_marginStart="20dp"
@@ -93,7 +98,9 @@
     <EditText
         android:id="@+id/creatorEdit"
         android:inputType="textPersonName"
-        android:layout_width="match_parent"
+        android:ems="18"
+        android:maxEms="50"
+        android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_marginTop="20dp"
         android:layout_marginStart="20dp"

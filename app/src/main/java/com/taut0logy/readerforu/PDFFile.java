@@ -108,6 +108,10 @@ public class PDFFile implements Serializable {
     public void setFavourite(boolean isFavourite) {
         this.isFavourite = isFavourite;
     }
+
+    public void setModified(long modified) {
+        this.modified = modified;
+    }
     public JSONObject toJSON() {
         JSONObject pdfObj = new JSONObject();
         try {

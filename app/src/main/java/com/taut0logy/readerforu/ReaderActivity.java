@@ -94,6 +94,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             jsonArray.put(recyclerPosition, jsonObject);
             editor.putString(PDF_CACHE_KEY, jsonArray.toString());
         } catch (JSONException ex) {
+            Log.d("PDFErr", "onPause: " + ex.getMessage());
             ex.printStackTrace();
         }
         editor.apply();
@@ -110,6 +111,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         try {
             JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
             JSONObject jsonObject = pdfFile.toJSON();
+            jsonArray.remove(recyclerPosition);
             jsonArray.put(recyclerPosition, jsonObject);
             editor.putString(PDF_CACHE_KEY, jsonArray.toString());
         } catch (JSONException ex) {
@@ -125,6 +127,13 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         nowPage = sharedPreferences.getInt(pdfFile.getLocation()+"nowPage", 0);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putLong(pdfFile.getLocation()+"_lastRead", pdfFile.getLastRead());
+        try {
+            JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+            jsonArray.put(recyclerPosition, pdfFile.toJSON());
+            editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+        } catch (JSONException ex) {
+            ex.printStackTrace();
+        }
         editor.apply();
     }
 
