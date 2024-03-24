@@ -401,7 +401,7 @@ public class BrowserActivity extends AppCompatActivity {
                 "ReaderForU is a simple PDF reader app.\n" +
                 "Developed by Raufun Ahsan\n" +
                 "Version 1.0.0\n" +
-                "© 2021 Taut0logy\n" +
+                "© 2024 Taut0logy\n" +
                 "All rights reserved."
         );
         builder.setCancelable(true);
