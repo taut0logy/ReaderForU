@@ -21,6 +21,7 @@ import com.google.android.material.imageview.ShapeableImageView;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.PdfWriter;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -64,9 +65,10 @@ public class InfoActivity extends AppCompatActivity {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        PdfDocument pdfDocument = new PdfDocument(reader);
-        PdfDocumentInfo info = pdfDocument.getDocumentInfo();
+        PdfDocument pdfDocument_ = new PdfDocument(reader);
+        PdfDocumentInfo info = pdfDocument_.getDocumentInfo();
         modified.setText(info.getCreator());
+        pdfDocument_.close();
         String sizeStr = (new File(pdfFile.getLocation()).length()/1024)+" KB";
         size.setText(sizeStr);
         location.setText(pdfFile.getLocation());
@@ -74,13 +76,39 @@ public class InfoActivity extends AppCompatActivity {
             int id = item.getItemId();
             if(id == R.id.action_favourite) {
                 MenuItem favButton = toolbar.getMenu().findItem(R.id.action_favourite);
-                pdfFile.setFavourite(!pdfFile.getFavourite());
-                if(pdfFile.getFavourite()) {
-                    favButton.setIcon(R.drawable.baseline_star_24);
-                    BrowserActivity.getFavPdfFiles().add(pdfFile);
-                } else {
-                    favButton.setIcon(R.drawable.baseline_star_border_24);
-                    BrowserActivity.getFavPdfFiles().remove(pdfFile);
+                String pdfFilePath = pdfFile.getLocation();
+                try {
+                    PdfReader pdfReader = new PdfReader(pdfFilePath);
+                    PdfWriter pdfWriter = new PdfWriter(pdfFilePath + "_temp");
+                    PdfDocument pdfDocument = new PdfDocument(pdfReader, pdfWriter);
+                    PdfDocumentInfo pdfDocumentInfo = pdfDocument.getDocumentInfo();
+                    if(pdfFile.getFavourite()) {
+                        pdfFile.setFavourite(false);
+                        pdfDocumentInfo.setMoreInfo("favourite", "false");
+                        BrowserActivity.getFavPdfFiles().remove(pdfFile);
+                        favButton.setIcon(R.drawable.baseline_star_border_24);
+                    } else {
+                        pdfFile.setFavourite(true);
+                        pdfDocumentInfo.setMoreInfo("favourite", "true");
+                        BrowserActivity.getFavPdfFiles().add(pdfFile);
+                        favButton.setIcon(R.drawable.baseline_star_24);
+                    }
+                    Log.d("PDFErr", "onCreate: "+pdfDocumentInfo.getMoreInfo("favourite"));
+                    pdfDocument.close();
+                    pdfReader.close();
+                    pdfWriter.close();
+                    new Thread(() -> {
+                        try {
+                            java.nio.file.Files.move(java.nio.file.Paths.get(pdfFilePath + "_temp"),
+                                    java.nio.file.Paths.get(pdfFilePath),
+                                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        } catch (IOException e) {
+                            Log.e("PDFErr", "onBindViewHolder: ", e);
+                            e.printStackTrace();
+                        }
+                    }).start();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
                 SharedPreferences sharedPreferences = getSharedPreferences("reader", Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -92,8 +120,7 @@ public class InfoActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                BrowserActivity.getPdfFiles().get(position).setFavourite(pdfFile.getFavourite());
-                BrowserActivity.getPdfFileAdapter().notifyItemChanged(position);
+                BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
                 return true;
             }
             if(id == R.id.action_about) {

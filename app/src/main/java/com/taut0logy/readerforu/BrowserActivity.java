@@ -264,21 +264,6 @@ public class BrowserActivity extends AppCompatActivity {
         editor.putString(PDF_CACHE_KEY, pdfArray.toString());
         editor.apply();
         Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
-//        JSONArray pdfArray;
-//        try {
-//            pdfArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-//            for (PDFFile pdfFile : pdfFiles) {
-//                JSONObject pdfObj = pdfFile.toJSON();
-//                if(!pdfArray.toString().contains(pdfObj.toString()))
-//                    pdfArray.put(pdfObj);
-//            }
-//            SharedPreferences.Editor editor = sharedPreferences.edit();
-//            editor.putString(PDF_CACHE_KEY, pdfArray.toString());
-//            editor.apply();
-//            Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
-//        } catch (JSONException e) {
-//            e.printStackTrace();
-//        }
     }
 
     private void loadCachedPDFFiles() {

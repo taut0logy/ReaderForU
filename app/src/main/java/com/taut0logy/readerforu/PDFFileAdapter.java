@@ -21,6 +21,7 @@ import com.google.android.material.imageview.ShapeableImageView;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.PdfWriter;
 
 import org.json.JSONArray;
 
@@ -73,27 +74,41 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             context.startActivity(intent);
         });
         holder.favButton.setOnClickListener(v -> {
-            PdfDocument pdfDocument = null;
+            String pdfFilePath = pdfFile.getLocation();
             try {
-                pdfDocument = new PdfDocument(new PdfReader(pdfFile.getLocation()));
-            } catch (IOException e) {
+                PdfReader pdfReader = new PdfReader(pdfFilePath);
+                PdfWriter pdfWriter = new PdfWriter(pdfFilePath + "_temp");
+                PdfDocument pdfDocument = new PdfDocument(pdfReader, pdfWriter);
+                PdfDocumentInfo pdfDocumentInfo = pdfDocument.getDocumentInfo();
+                if(pdfFile.getFavourite()) {
+                    pdfFile.setFavourite(false);
+                    pdfDocumentInfo.setMoreInfo("favourite", "false");
+                    BrowserActivity.getFavPdfFiles().remove(pdfFile);
+                    holder.favButton.setImageResource(R.drawable.star_regular);
+                } else {
+                    pdfFile.setFavourite(true);
+                    pdfDocumentInfo.setMoreInfo("favourite", "true");
+                    BrowserActivity.getFavPdfFiles().add(pdfFile);
+                    holder.favButton.setImageResource(R.drawable.star_solid);
+                }
+                Log.d("PDFErr", "onBindViewHolder: "+pdfDocumentInfo.getMoreInfo("favourite"));
+                pdfDocument.close();
+                pdfReader.close();
+                pdfWriter.close();
+                new Thread(() -> {
+                    try {
+                        java.nio.file.Files.move(java.nio.file.Paths.get(pdfFilePath + "_temp"),
+                                java.nio.file.Paths.get(pdfFilePath),
+                                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    } catch (IOException e) {
+                        Log.e("PDFErr", "onBindViewHolder: ", e);
+                        e.printStackTrace();
+                    }
+                }).start();
+            } catch (Exception e) {
+                Log.e("PDFErr", "onBindViewHolder: " + e.getClass().getName(), e);
                 e.printStackTrace();
             }
-            assert pdfDocument != null;
-            PdfDocumentInfo pdfDocumentInfo = pdfDocument.getDocumentInfo();
-            if(pdfFile.getFavourite()) {
-                pdfFile.setFavourite(false);
-                pdfDocumentInfo.setMoreInfo("favourite", "false");
-                BrowserActivity.getFavPdfFiles().remove(pdfFile);
-                holder.favButton.setImageResource(R.drawable.star_regular);
-            } else {
-                pdfFile.setFavourite(true);
-                pdfDocumentInfo.setMoreInfo("favourite", "true");
-                BrowserActivity.getFavPdfFiles().add(pdfFile);
-                holder.favButton.setImageResource(R.drawable.star_solid);
-            }
-            Log.d("PDFErr", "onBindViewHolder: "+pdfDocumentInfo.getMoreInfo("favourite"));
-            pdfDocument.close();
             SharedPreferences sharedPreferences = context.getSharedPreferences("reader", Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
             try {
@@ -104,7 +119,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            BrowserActivity.getPdfFiles().get(position).setFavourite(pdfFile.getFavourite());
+            pdfFiles.set(position, pdfFile);
         });
 
         holder.deleteButton.setOnClickListener(v -> {

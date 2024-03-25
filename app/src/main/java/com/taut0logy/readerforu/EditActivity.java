@@ -15,10 +15,16 @@ import android.widget.ImageView;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.PdfWriter;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 public class EditActivity extends AppCompatActivity {
     private EditText etName, etAuthor, etDescription, etCreator;
@@ -76,42 +82,62 @@ public class EditActivity extends AppCompatActivity {
         String author = etAuthor.getText().toString();
         String description = etDescription.getText().toString();
         String creator = etCreator.getText().toString();
-        PdfReader reader = null;
+        String pdfFilePath = pdfFile.getLocation();
         try {
-            reader = new PdfReader(pdfFile.getLocation());
+            // Read the existing PDF document
+            PdfReader reader = new PdfReader(pdfFilePath);
+            PdfWriter writer = new PdfWriter(pdfFilePath + "_temp");
+            PdfDocument pdfDocument = new PdfDocument(reader, writer);
+            // Get the document info
+            PdfDocumentInfo info = pdfDocument.getDocumentInfo();
+            // Update metadata
+            if (!name.isEmpty()) {
+                pdfFile.setName(name);
+                info.setTitle(name);
+            }
+            if (!author.isEmpty()) {
+                pdfFile.setAuthor(author);
+                info.setAuthor(author);
+            }
+            if (!description.isEmpty()) {
+                pdfFile.setDescription(description);
+                info.setSubject(description);
+            }
+            if (!creator.isEmpty()) {
+                info.setCreator(creator);
+            }
+            // Close the PDF document
+            pdfDocument.close();
+            reader.close();
+            writer.close();
+            // Rename the updated temporary file to the original file
+            ((Runnable) () -> {
+                try {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Save Changes");
+                    builder.setMessage("Saving changes...");
+                    builder.setCancelable(false);
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+                    Files.move(Paths.get(pdfFilePath + "_temp"),
+                            Paths.get(pdfFilePath),
+                            StandardCopyOption.REPLACE_EXISTING);
+                    dialog.dismiss();
+                } catch (Exception e) {
+                    Log.e("PDFErr", "saveChanges: ", e);
+                    e.printStackTrace();
+                }
+            }).run();
         } catch (Exception e) {
+            Log.e("PDFErr", "saveChanges: ", e);
             e.printStackTrace();
         }
-        assert reader != null;
-        PdfDocument pdfDocument = new PdfDocument(reader);
-        JSONObject pdfData = pdfFile.toJSON();
-        PdfDocumentInfo info = pdfDocument.getDocumentInfo();
-        if(!name.isEmpty()) {
-            info.setTitle(name);
-            pdfFile.setName(name);
-            pdfData.put("name", name);
-        }
-        if(!author.isEmpty()) {
-            info.setAuthor(author);
-            pdfFile.setAuthor(author);
-            pdfData.put("author", author);
-        }
-        if(!description.isEmpty()) {
-            info.setSubject(description);
-            pdfFile.setDescription(description);
-            pdfData.put("description", description);
-        }
-        if(!creator.isEmpty()) {
-            info.setCreator(creator);
-        }
-        pdfFile.setModified(System.currentTimeMillis());
+        pdfFile.setModified(new File(pdfFile.getLocation()).lastModified());
         BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
-        //BrowserActivity.getPdfFiles().set(position, pdfFile);
         SharedPreferences sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         try {
             JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-            jsonArray.remove(position);
             jsonArray.put(position, pdfFile.toJSON());
             editor.putString(PDF_CACHE_KEY, jsonArray.toString());
             editor.apply();
@@ -119,7 +145,6 @@ public class EditActivity extends AppCompatActivity {
             Log.e("EditActivity", "saveChanges: ", e);
             e.printStackTrace();
         }
-        pdfDocument.close();
     }
 
     @Override
