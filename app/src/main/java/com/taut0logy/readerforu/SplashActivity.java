@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -19,15 +20,14 @@ import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
-import org.json.JSONObject;
-
 import java.io.File;
-import java.io.FileWriter;
 
 @SuppressLint("CustomSplashScreen")
 public class SplashActivity extends AppCompatActivity {
 
     private static final int READ_EXTERNAL_STORAGE_PERMISSION_CODE = 1;
+    private static final int READ_REQUEST_CODE = 42; // Arbitrary request code for SAF
+    private static final int REQUEST_CODE_OPEN_DOCUMENT_TREE = 42;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,14 +97,39 @@ public class SplashActivity extends AppCompatActivity {
         builder.setPositiveButton("Grant Permission", (dialog, which) -> {
             // Request the storage permission again
             Log.d("Permission", "Requesting storage permission again");
+            //requestStorageAccess();
             requestStoragePermission();
         });
         builder.setCancelable(false); // Prevent dismissing dialog by tapping outside
         builder.setOnCancelListener(dialog -> {
             // Close the app if back button is pressed while the permission popup is shown
-            finish();
+            finishAffinity();
         });
         builder.show();
+    }
+
+    private void requestStorageAccess() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        startActivityForResult(intent, READ_REQUEST_CODE);
+    }
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
+        super.onActivityResult(requestCode, resultCode, resultData);
+        if (requestCode == REQUEST_CODE_OPEN_DOCUMENT_TREE && resultCode == Activity.RESULT_OK) {
+            if (resultData != null) {
+                Uri treeUri = resultData.getData();
+                // Use the selected treeUri to access the folder
+                // Example: readFromFolder(treeUri);
+                Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(SplashActivity.this, BrowserActivity.class);
+                initApp();
+                startActivity(intent);
+                finish();
+            }
+        } else {
+            Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
+            finish();
+        }
     }
 
     private void requestStoragePermission() {

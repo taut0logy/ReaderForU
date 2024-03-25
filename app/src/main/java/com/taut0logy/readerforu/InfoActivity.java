@@ -1,6 +1,7 @@
 package com.taut0logy.readerforu;
 
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
@@ -107,44 +108,48 @@ public class InfoActivity extends AppCompatActivity {
                 return true;
             }
             if(id == R.id.action_delete) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(InfoActivity.this);
-                builder.setTitle("Delete");
-                builder.setMessage("Are you sure you want to delete this file?");
-                builder.setPositiveButton("Yes", (dialog, which) -> {
-                    File file = new File(pdfFile.getLocation());
-                    if(file.delete()) {
-                        SharedPreferences sharedPreferences = getSharedPreferences("reader", Context.MODE_PRIVATE);
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.remove(BrowserActivity.getPdfFiles().get(position).getLocation());
-                        try {
-                            JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-                            jsonArray.remove(position);
-                            editor.putString(PDF_CACHE_KEY, jsonArray.toString());
-                            editor.apply();
-//                            JSONObject jsonObject = BrowserActivity.getPdfFileAdapter().getFavList();
-//                            jsonObject.remove(BrowserActivity.getPdfFiles().get(position).getLocation());
-//                            BrowserActivity.getPdfFileAdapter().writeFavList(jsonObject);
-                            File thumbnail = new File(BrowserActivity.getPdfFiles().get(position).getImagePath());
-                            boolean res=thumbnail.delete();
-                            if(res) {
-                                Log.d("PDFFileAdapter", "showConfirmationDialog: Thumbnail deleted");
-                            } else {
-                                Log.d("PDFFileAdapter", "showConfirmationDialog: Thumbnail not deleted");
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        Toast.makeText(InfoActivity.this, "Deleted Successfully", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(InfoActivity.this, "Failed to delete", Toast.LENGTH_SHORT).show();
-                    }
-                });
-                builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
+                AlertDialog.Builder builder = getBuilder(position);
                 builder.create().show();
                 return true;
             }
             return false;
         });
+    }
+
+    @NonNull
+    private AlertDialog.Builder getBuilder(int position) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(InfoActivity.this);
+        builder.setTitle("Delete");
+        builder.setMessage("Are you sure you want to delete this file?");
+        builder.setPositiveButton("Yes", (dialog, which) -> {
+            File file = new File(pdfFile.getLocation());
+            if(file.delete()) {
+                SharedPreferences sharedPreferences = getSharedPreferences("reader", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.remove(BrowserActivity.getPdfFiles().get(position).getLocation());
+                try {
+                    JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+                    jsonArray.remove(position);
+                    editor.putString(PDF_CACHE_KEY, jsonArray.toString());
+                    editor.apply();
+                    File thumbnail = new File(BrowserActivity.getPdfFiles().get(position).getImagePath());
+                    boolean res=thumbnail.delete();
+                    if(res) {
+                        Log.d("PDFFileAdapter", "showConfirmationDialog: Thumbnail deleted");
+                    } else {
+                        Log.d("PDFFileAdapter", "showConfirmationDialog: Thumbnail not deleted");
+                    }
+                    BrowserActivity.getPdfFileAdapter().removePDFFileAt(position);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                Toast.makeText(InfoActivity.this, "Deleted Successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(InfoActivity.this, "Failed to delete", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
+        return builder;
     }
 
     @Override

@@ -162,19 +162,19 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
     }
 
     public void updatePDFFileAt(int position, PDFFile pdfFile) {
-        BrowserActivity.getPdfFiles().set(position, pdfFile);
+        //BrowserActivity.getPdfFiles().set(position, pdfFile);
         pdfFiles.set(position, pdfFile);
         notifyItemChanged(position);
     }
     public void removePDFFileAt(int position) {
-        BrowserActivity.getPdfFiles().remove(position);
+        //BrowserActivity.getPdfFiles().remove(position);
         pdfFiles.remove(position);
         notifyItemRemoved(position);
         notifyItemRangeChanged(position, pdfFiles.size());
     }
 
     public void addPDFFile(PDFFile pdfFile) {
-        BrowserActivity.getPdfFiles().add(pdfFile);
+        //BrowserActivity.getPdfFiles().add(pdfFile);
         pdfFiles.add(pdfFile);
         notifyItemInserted(pdfFiles.size()-1);
     }

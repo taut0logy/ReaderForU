@@ -106,6 +106,7 @@ public class EditActivity extends AppCompatActivity {
         }
         pdfFile.setModified(System.currentTimeMillis());
         BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
+        //BrowserActivity.getPdfFiles().set(position, pdfFile);
         SharedPreferences sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         try {

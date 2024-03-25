@@ -1,5 +1,6 @@
 package com.taut0logy.readerforu;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -10,12 +11,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -34,7 +37,6 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class BrowserActivity extends AppCompatActivity {
     private static ArrayList<PDFFile> pdfFiles;
@@ -84,6 +86,7 @@ public class BrowserActivity extends AppCompatActivity {
                     builder.setCancelable(false);
                     AlertDialog alertDialog = builder.create();
                     alertDialog.show();
+                    pdfFiles.clear();
                     new Thread(() -> {
                         loadPDFFiles();
                         savePDFFilesToCache();
@@ -124,7 +127,7 @@ public class BrowserActivity extends AppCompatActivity {
                 pdfFileAdapter.notifyDataSetChanged();
             });
         }).start();
-        savePDFFilesToCache();
+        //savePDFFilesToCache();
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -222,14 +225,6 @@ public class BrowserActivity extends AppCompatActivity {
         return true;
     }
 
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // Save PDF files to cache when activity pauses
-        savePDFFilesToCache();
-    }
-
     @Override
     protected void onStop() {
         super.onStop();
@@ -240,18 +235,18 @@ public class BrowserActivity extends AppCompatActivity {
     @SuppressLint("NotifyDataSetChanged")
     @Override
     protected void onStart() {
-        super.onStart();
         pdfFiles.sort(this::comparePDFFiles);
-        pdfFileAdapter.notifyDataSetChanged();
+        //pdfFileAdapter.notifyDataSetChanged();
+        super.onStart();
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    @Override
-    protected void onResume() {
-        super.onResume();
-        pdfFiles.sort(this::comparePDFFiles);
-        pdfFileAdapter.notifyDataSetChanged();
-    }
+//    @SuppressLint("NotifyDataSetChanged")
+//    @Override
+//    protected void onResume() {
+//        super.onResume();
+//        pdfFiles.sort(this::comparePDFFiles);
+//        pdfFileAdapter.notifyDataSetChanged();
+//    }
 
     private boolean isPdfCacheAvailable() {
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
@@ -260,21 +255,30 @@ public class BrowserActivity extends AppCompatActivity {
 
     private void savePDFFilesToCache() {
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
-        JSONArray pdfArray;
-        try {
-            pdfArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-            for (PDFFile pdfFile : pdfFiles) {
-                JSONObject pdfObj = pdfFile.toJSON();
-                if(!pdfArray.toString().contains(pdfObj.toString()))
-                    pdfArray.put(pdfObj);
-            }
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.putString(PDF_CACHE_KEY, pdfArray.toString());
-            editor.apply();
-            Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
-        } catch (JSONException e) {
-            e.printStackTrace();
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        JSONArray pdfArray = new JSONArray();
+        for (PDFFile pdfFile : pdfFiles) {
+            pdfArray.put(pdfFile.toJSON());
         }
+        editor.remove(PDF_CACHE_KEY); // Clear the cache (if any)
+        editor.putString(PDF_CACHE_KEY, pdfArray.toString());
+        editor.apply();
+        Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
+//        JSONArray pdfArray;
+//        try {
+//            pdfArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
+//            for (PDFFile pdfFile : pdfFiles) {
+//                JSONObject pdfObj = pdfFile.toJSON();
+//                if(!pdfArray.toString().contains(pdfObj.toString()))
+//                    pdfArray.put(pdfObj);
+//            }
+//            SharedPreferences.Editor editor = sharedPreferences.edit();
+//            editor.putString(PDF_CACHE_KEY, pdfArray.toString());
+//            editor.apply();
+//            Log.d("PDFErr", "Saved PDF Files to cache: " + pdfArray.length() + " " + pdfFiles.size() + " " + pdfFileAdapter.getItemCount());
+//        } catch (JSONException e) {
+//            e.printStackTrace();
+//        }
     }
 
     private void loadCachedPDFFiles() {
@@ -320,35 +324,75 @@ public class BrowserActivity extends AppCompatActivity {
 
     private void loadPDFFiles() {
         Log.e("PDFErr", "Loading PDF Files from storage...");
-        // Load PDF files from the storage
-        File folder = new File(Environment.getExternalStorageDirectory() + "/Documents");
-        File[] files = folder.listFiles();
-        File folder1 = new File(Environment.getExternalStorageDirectory() + "/Download");
-        File[] files1 = folder1.listFiles();
         ArrayList<File> allFiles = new ArrayList<>();
-        //Log.d("PDFErr", "Files: " + allFiles + " " + Arrays.toString(files) + " " + Arrays.toString(files1));
-        if(files != null) {
-            allFiles.addAll(Arrays.asList(files));
-        }
-        if(files1 != null) {
-            allFiles.addAll(Arrays.asList(files1));
-        }
-        if(!allFiles.isEmpty()) {
-            for (File file : allFiles) {
-                if (file.getName().endsWith(".pdf")) {
-                    addPdfFile(file);
-                    String message="Scanning for PDF Files...\nFound "+pdfFiles.size()+" PDF Files";
-                    runOnUiThread(() -> statusText.setText(message));
-                    //Log.d("PDFErr", (String) statusText.getText());
+
+        // Query PDF files using MediaStore
+        try (Cursor cursor = getContentResolver().query(
+                MediaStore.Files.getContentUri("external"),
+                new String[]{MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DATA},
+                MediaStore.Files.FileColumns.MIME_TYPE + "=?",
+                new String[]{"application/pdf"},
+                null)) {
+
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    String filePath = cursor.getString(cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA));
+                    allFiles.add(new File(filePath));
                 }
             }
-            if(pdfFiles.isEmpty()) {
-                runOnUiThread(() -> statusText.setText("No PDF Files found"));
+        } catch (SecurityException e) {
+            e.printStackTrace();
+            // Handle permission denied
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Handle other exceptions
+        }
+
+        if (!allFiles.isEmpty()) {
+            for (File file : allFiles) {
+                addPdfFile(file);
+                String message = "Scanning for PDF Files...\nFound " + pdfFiles.size() + " PDF Files";
+                runOnUiThread(() -> statusText.setText(message));
             }
+
             pdfFiles.sort(this::comparePDFFiles);
             savePDFFilesToCache();
+        } else {
+            runOnUiThread(() -> statusText.setText("No PDF Files found"));
         }
     }
+
+//    private void loadPDFFiles() {
+//        Log.e("PDFErr", "Loading PDF Files from storage...");
+//        // Load PDF files from the storage
+//        File folder = new File(Environment.getExternalStorageDirectory() + "/Documents");
+//        File[] files = folder.listFiles();
+//        File folder1 = new File(Environment.getExternalStorageDirectory() + "/Download");
+//        File[] files1 = folder1.listFiles();
+//        ArrayList<File> allFiles = new ArrayList<>();
+//        //Log.d("PDFErr", "Files: " + allFiles + " " + Arrays.toString(files) + " " + Arrays.toString(files1));
+//        if(files != null) {
+//            allFiles.addAll(Arrays.asList(files));
+//        }
+//        if(files1 != null) {
+//            allFiles.addAll(Arrays.asList(files1));
+//        }
+//        if(!allFiles.isEmpty()) {
+//            for (File file : allFiles) {
+//                if (file.getName().endsWith(".pdf")) {
+//                    addPdfFile(file);
+//                    String message="Scanning for PDF Files...\nFound "+pdfFiles.size()+" PDF Files";
+//                    runOnUiThread(() -> statusText.setText(message));
+//                    //Log.d("PDFErr", (String) statusText.getText());
+//                }
+//            }
+//            if(pdfFiles.isEmpty()) {
+//                runOnUiThread(() -> statusText.setText("No PDF Files found"));
+//            }
+//            pdfFiles.sort(this::comparePDFFiles);
+//            savePDFFilesToCache();
+//        }
+//    }
 
     private void addPdfFile(File file) {
         String path = file.getAbsolutePath();
@@ -395,6 +439,20 @@ public class BrowserActivity extends AppCompatActivity {
         }
     }
     public static void showAboutDialog(Context context) {
+        AlertDialog.Builder builder = getBuilder(context);
+        builder.setNegativeButton("Facebook", (dialog, which) -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.facebook.com/raufun.ahsan"));
+            context.startActivity(intent);
+        });
+        builder.setNeutralButton("Email", (dialog, which) -> {
+            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:raufun.ahsan@gmail.com"));
+            context.startActivity(intent);
+        });
+        builder.create().show();
+    }
+
+    @NonNull
+    private static AlertDialog.Builder getBuilder(Context context) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("About ReaderForU");
         builder.setMessage(
@@ -409,15 +467,7 @@ public class BrowserActivity extends AppCompatActivity {
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.github.com/Taut0logy"));
             context.startActivity(intent);
         });
-        builder.setNegativeButton("Facebook", (dialog, which) -> {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.facebook.com/raufun.ahsan"));
-            context.startActivity(intent);
-        });
-        builder.setNeutralButton("Email", (dialog, which) -> {
-            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:raufun.ahsan@gmail.com"));
-            context.startActivity(intent);
-        });
-        builder.create().show();
+        return builder;
     }
 
     public int comparePDFFiles(PDFFile pdfFile1, PDFFile pdfFile2) {
