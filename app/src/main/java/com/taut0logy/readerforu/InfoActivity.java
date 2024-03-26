@@ -75,6 +75,7 @@ public class InfoActivity extends AppCompatActivity {
             Log.e("PDFErr", "InfoActivity onCreate: ", e);
             if(Objects.requireNonNull(e.getMessage()).contains("password")) {
                 String password = getIntent().getStringExtra("password");
+                Log.d("PDFErr", "InfoActivity onCreate: "+password);
                 if(password == null) {
                     Toast.makeText(this, "File is encrypted", Toast.LENGTH_SHORT).show();
                     finish();

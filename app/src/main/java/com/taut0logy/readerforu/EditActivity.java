@@ -86,13 +86,11 @@ public class EditActivity extends AppCompatActivity {
         String creator = etCreator.getText().toString();
         String pdfFilePath = pdfFile.getLocation();
         try {
-            // Read the existing PDF document
             PdfReader reader = new PdfReader(pdfFilePath);
             PdfWriter writer = new PdfWriter(pdfFilePath + "_temp");
             PdfDocument pdfDocument = new PdfDocument(reader, writer);
-            // Get the document info
+
             PdfDocumentInfo info = pdfDocument.getDocumentInfo();
-            // Update metadata
             if (!name.isEmpty()) {
                 pdfFile.setName(name);
                 info.setTitle(name);
@@ -143,11 +141,9 @@ public class EditActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         pdfFile.setModified(new File(pdfFile.getLocation()).lastModified());
-        //BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
         BrowserActivity.getPdfFiles().set(position, pdfFile);
         Intent intent = new Intent("com.taut0logy.readerforu.PDF_FILE_UPDATED");
         intent.putExtra("position", position);
-        //intent.putExtra("pdfFile", pdfFile);
         sendBroadcast(intent);
         SharedPreferences sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();

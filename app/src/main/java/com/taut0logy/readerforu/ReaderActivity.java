@@ -58,6 +58,12 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         showDialog = findViewById(R.id.showDialog);
         recyclerPosition = getIntent().getIntExtra("position", 0);
         pdfFile = BrowserActivity.getPdfFiles().get(recyclerPosition);
+        if(pdfFile == null) {
+            Intent intent = new Intent(this, BrowserActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
         pdfFile.setLastRead(System.currentTimeMillis());
         loadPreferences();
         tvBookName.setText(pdfFile.getName());
@@ -216,6 +222,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         EditText passwordEditText = view.findViewById(R.id.etPassword);
         Button okButton = view.findViewById(R.id.submitPassword);
         Button cancelButton = view.findViewById(R.id.cancelPassword);
+        builder.setCancelable(false);
         AlertDialog dialog = builder.create();
         okButton.setOnClickListener(v -> {
             String password = passwordEditText.getText().toString();
@@ -239,6 +246,8 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     private void loadPdfWithPassword(String location, String password) throws Exception  {
         Log.e("PDFErr", "loadPdfWithPassword: " + location + " " + nowPage);
         File file = new File(location);
+        Intent intent = new Intent(ReaderActivity.this, InfoActivity.class);
+        intent.putExtra("password", password);
         PDFView.Configurator configurator = pdfView.fromFile(file).password(password).onError(t -> {
             Log.e("PDFErr", "loadPdfWithPassword: ", t);
             throw new RuntimeException(t);
@@ -249,7 +258,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         //open pdfdocument with password\
         Log.e("PDFErr", "loadPdfWithPassword: success");
         byte[] bytes = password.getBytes();
-        new Intent(ReaderActivity.this, InfoActivity.class).putExtra("password", password);
         PdfDocument pdfDocument = new PdfDocument(new com.itextpdf.kernel.pdf.PdfReader(location, new ReaderProperties().setPassword(bytes)));
         PdfDocumentInfo pdfDocumentInfo = pdfDocument.getDocumentInfo();
         tvBookName.setText(pdfFile.getName());

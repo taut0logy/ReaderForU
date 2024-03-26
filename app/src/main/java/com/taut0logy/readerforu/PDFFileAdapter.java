@@ -35,15 +35,16 @@ import java.util.List;
 
 public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileViewHolder> implements Filterable {
 
-    private final List<PDFFile> pdfFiles;
-    private final List<PDFFile> filteredPdfFiles;
+    private List<PDFFile> pdfFiles;
+    private List<PDFFile> filteredPdfFiles;
     private final Context context;
     private static final String PDF_CACHE_KEY = "pdf_cache";
 
-    public PDFFileAdapter(List<PDFFile> pdfFiles, Context context){
+    public PDFFileAdapter(List<PDFFile> pdfFiles, List<PDFFile> filteredPdfFiles, Context context){
         this.pdfFiles = pdfFiles;
-        this.filteredPdfFiles = new ArrayList<>(pdfFiles);
+        this.filteredPdfFiles = filteredPdfFiles;
         this.context = context;
+        Log.d("PDFErr", "PDFFileAdapter constructor: "+ pdfFiles.size() + " "+filteredPdfFiles.size());
     }
 
     @NonNull
@@ -56,13 +57,16 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
     @SuppressLint("NotifyDataSetChanged")
     @Override
     public void onBindViewHolder(@NonNull PDFFileAdapter.PDFFileViewHolder holder, int position) {
-        PDFFile pdfFile = pdfFiles.get(position);
+        PDFFile pdfFile= filteredPdfFiles.get(position);
         holder.name.setText(pdfFile.getName());
         holder.author.setText(pdfFile.getAuthor());
         String pages = String.valueOf(pdfFile.getTotalPages());
         holder.totalPages.setText(pages);
-        Log.d("PDFFileAdapter", "onBindViewHolder: "+pdfFile.getCurrPage()+" "+pdfFile.getTotalPages());
+        Log.d("PDFFileAdapter", "onBindViewHolder check: "+pdfFile.getCurrPage()+" "+pdfFile.getTotalPages());
         float progress = ((float)pdfFile.getCurrPage()/(float)pdfFile.getTotalPages())*100;
+        if(pdfFile.getTotalPages() == 0) {
+            progress = 0;
+        }
         progress = Math.round(progress*100.0)/100.0f;
         String progressStr = progress+"%";
         holder.progress.setText(progressStr);
@@ -123,20 +127,19 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
                 Log.e("PDFErr", "onBindViewHolder: " + e.getClass().getName(), e);
                 e.printStackTrace();
             }
-            //TODO: 26/03/2024     sync the changes with the pdfFiles list
             int position1 = BrowserActivity.getPdfFiles().indexOf(pdfFile);
             SharedPreferences sharedPreferences = context.getSharedPreferences("reader", Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
             try {
                 JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-                jsonArray.put(position, pdfFile.toJSON());
+                jsonArray.put(position1, pdfFile.toJSON());
                 editor.putString(PDF_CACHE_KEY, jsonArray.toString());
                 editor.apply();
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            pdfFiles.set(position, pdfFile);
-            notifyDataSetChanged();
+            pdfFiles.set(position1, pdfFile);
+            notifyItemChanged(position);
         });
 
         holder.deleteButton.setOnClickListener(v -> {
@@ -150,7 +153,8 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             }
             //edit the file
             Intent intent = new Intent(context, EditActivity.class);
-            intent.putExtra("position", position);
+            int position1 = BrowserActivity.getPdfFiles().indexOf(pdfFile);
+            intent.putExtra("position", position1);
             context.startActivity(intent);
         });
         holder.infoButton.setOnClickListener(v -> {
@@ -159,14 +163,15 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
                 return;
             }
             Intent intent = new Intent(context, InfoActivity.class);
-            intent.putExtra("position", position);
+            int position1 = BrowserActivity.getPdfFiles().indexOf(pdfFile);
+            intent.putExtra("position", position1);
             context.startActivity(intent);
         });
     }
 
     @Override
     public int getItemCount() {
-        return pdfFiles.size();
+        return filteredPdfFiles.size();
     }
 
     @Override
@@ -177,9 +182,9 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
     Filter searchFilter = new Filter() {
         @Override
         protected FilterResults performFiltering(CharSequence constraint) {
-            List<PDFFile> filteredList = new java.util.ArrayList<>();
+            List<PDFFile> filteredList = new ArrayList<>();
             if(constraint == null || constraint.length() == 0) {
-                filteredList.addAll(filteredPdfFiles);
+                filteredList.addAll(pdfFiles);
             } else {
                 String filterPattern = constraint.toString().toLowerCase().trim();
                 for(PDFFile pdfFile : pdfFiles) {
@@ -199,6 +204,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             filteredPdfFiles.clear();
             filteredPdfFiles.addAll((Collection<? extends PDFFile>) results.values);
             notifyDataSetChanged();
+            Log.d("PDFErr", "publishResults: "+filteredPdfFiles.size() + " "+pdfFiles.size() + " "+results.values);
         }
     };
 
@@ -277,7 +283,9 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             Toast.makeText(context, "File doesn't exist", Toast.LENGTH_SHORT).show();
         }
         //removePDFFileAt(position);
-        pdfFiles.remove(position);
+        int position1 = BrowserActivity.getPdfFiles().indexOf(pdfFiles.get(position));
+        pdfFiles.remove(position1);
+        filteredPdfFiles.remove(position);
         notifyItemRemoved(position);
     }
 }
