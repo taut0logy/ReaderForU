@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -68,8 +69,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             progress = 0;
         }
         progress = Math.round(progress*100.0)/100.0f;
-        String progressStr = progress+"%";
-        holder.progress.setText(progressStr);
+        holder.progress.setProgress((int)progress, true);
         if(pdfFile.getImagePath().equals("__protected")) {
             holder.thumbnail.setImageResource(R.drawable.lock);
         } else {
@@ -211,15 +211,16 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
     public static class PDFFileViewHolder extends RecyclerView.ViewHolder {
 
         ShapeableImageView thumbnail;
-        TextView name, author, totalPages, progress;
+        TextView name, author, totalPages;
         ImageButton favButton, deleteButton, editButton, infoButton;
+        ProgressBar progress;
         public PDFFileViewHolder(@NonNull View itemView) {
             super(itemView);
             thumbnail = itemView.findViewById(R.id.book_thumbnail);
             name = itemView.findViewById(R.id.book_name);
             author = itemView.findViewById(R.id.author_name);
             totalPages = itemView.findViewById(R.id.page_cnt);
-            progress = itemView.findViewById(R.id.progress_percentage);
+            progress = itemView.findViewById(R.id.progressBar);
             favButton = itemView.findViewById(R.id.favouriteButton);
             deleteButton = itemView.findViewById(R.id.deleteButton);
             editButton = itemView.findViewById(R.id.editButton);
