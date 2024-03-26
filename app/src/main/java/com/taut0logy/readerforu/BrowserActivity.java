@@ -1,16 +1,11 @@
 package com.taut0logy.readerforu;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
-
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
@@ -27,6 +22,12 @@ import android.widget.CheckBox;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfReader;
 
@@ -37,27 +38,26 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class BrowserActivity extends AppCompatActivity {
     private static ArrayList<PDFFile> pdfFiles;
     private static ArrayList<PDFFile> favPdfFiles;
-    @SuppressLint("StaticFieldLeak")
-    private static PDFFileAdapter pdfFileAdapter;
+    private PDFFileAdapter pdfFileAdapter;
     private TextView statusText;
     private SharedPreferences sharedPreferences;
-    Toolbar toolbar;
+    private Toolbar toolbar;
+    private RecyclerView recyclerView;
     private static final String PDF_CACHE_KEY = "pdf_cache";
     protected static boolean favouritesFirst = true;
     protected static int sortParameter = 1;
     protected static int sortDirection = 1;
+    private boolean dataChanged = false;
     protected static ArrayList<PDFFile> getPdfFiles() {
         return pdfFiles;
     }
     protected static ArrayList<PDFFile> getFavPdfFiles() {
         return favPdfFiles;
-    }
-    protected static PDFFileAdapter getPdfFileAdapter() {
-        return pdfFileAdapter;
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -66,7 +66,7 @@ public class BrowserActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_browser);
         toolbar = findViewById(R.id.browser_toolbar);
-        RecyclerView recyclerView = findViewById(R.id.recyclerView_browser);
+        recyclerView = findViewById(R.id.recyclerView_browser);
         statusText = findViewById(R.id.tvStatus);
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         pdfFiles = new ArrayList<>();
@@ -77,24 +77,37 @@ public class BrowserActivity extends AppCompatActivity {
         sortDirection = sharedPreferences.getInt("sortDirection", 1);
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
+                if(id == R.id.action_search) {
+                    Intent intent = new Intent(BrowserActivity.this, SearchActivity.class);
+                    startActivity(intent);
+                    return true;
+                }
                 if(id == R.id.action_refresh) {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(BrowserActivity.this);
-                    builder.setTitle("Refreshing PDF Files...");
-                    builder.setMessage(
-                            "This may take a while...\n" +
-                            "Please do not close the app...");
-                    builder.setCancelable(false);
-                    AlertDialog alertDialog = builder.create();
-                    alertDialog.show();
-                    pdfFiles.clear();
-                    new Thread(() -> {
-                        loadPDFFiles();
-                        savePDFFilesToCache();
-                        runOnUiThread(() -> {
-                            pdfFileAdapter.notifyDataSetChanged();
-                            alertDialog.dismiss();
-                        });
-                    }).start();
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Rescan PDF Files");
+                    builder.setMessage("This will rescan the storage for PDF files. It may take some time. Continue?");
+                    builder.setPositiveButton("Yes", (dialog, which) -> {
+                        dialog.dismiss();
+                        AlertDialog.Builder builder2 = new AlertDialog.Builder(BrowserActivity.this);
+                        builder2.setTitle("Refreshing PDF Files...");
+                        builder2.setMessage(
+                                "This may take a while...\n" +
+                                        "Please do not close the app...");
+                        builder2.setCancelable(false);
+                        AlertDialog alertDialog2 = builder2.create();
+                        alertDialog2.show();
+                        pdfFiles.clear();
+                        new Thread(() -> {
+                            loadPDFFiles();
+                            savePDFFilesToCache();
+                            runOnUiThread(() -> {
+                                pdfFileAdapter.notifyDataSetChanged();
+                                alertDialog2.dismiss();
+                            });
+                        }).start();
+                    });
+                    builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
+                    builder.show();
                     return true;
                 }
                 if(id == R.id.action_filter) {
@@ -107,6 +120,7 @@ public class BrowserActivity extends AppCompatActivity {
                 }
                 if(id == R.id.action_exit) {
                     finish();
+                    System.exit(0);
                     return true;
                 }
                 return false;
@@ -177,11 +191,10 @@ public class BrowserActivity extends AppCompatActivity {
             }
 
             buttonApply.setOnClickListener(v -> {
-                // Apply the selected filter and sort options
                 favouritesFirst = checkBoxFavorites.isChecked();
 
                 int selectedSortingParameterId = radioGroupSortingParameters.getCheckedRadioButtonId();
-                // Handle selected sorting parameter option
+
                 if(selectedSortingParameterId == R.id.radioButtonTitle)
                     sortParameter = 1;
                 else if(selectedSortingParameterId == R.id.radioButtonAuthor)
@@ -193,16 +206,13 @@ public class BrowserActivity extends AppCompatActivity {
                 else sortParameter = 1;
 
                 int selectedSortingOrderId = radioGroupSortingOrder.getCheckedRadioButtonId();
-                // Handle selected sorting order option
                 if(selectedSortingOrderId == R.id.radioButtonAscending)
                     sortDirection = 1;
                 else if(selectedSortingOrderId == R.id.radioButtonDescending)
                     sortDirection = 2;
                 else sortDirection = 1;
-                // Sort the PDF files according to the selected options and notify the adapter
                 pdfFiles.sort(this::comparePDFFiles);
                 pdfFileAdapter.notifyDataSetChanged();
-                // Dismiss the dialog
                 dialog.dismiss();
                 SharedPreferences.Editor editor = sharedPreferences.edit();
                 editor.putInt("sortParameter", sortParameter);
@@ -211,10 +221,7 @@ public class BrowserActivity extends AppCompatActivity {
                 editor.apply();
             });
 
-            buttonCancel.setOnClickListener(v -> {
-                // Dismiss the dialog without applying any changes
-                dialog.dismiss();
-            });
+            buttonCancel.setOnClickListener(v -> dialog.dismiss());
 
             dialog.show();
         }
@@ -226,27 +233,46 @@ public class BrowserActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(pdfFileUpdatedReceiver);
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
-        // Save PDF files to cache when activity stops
         savePDFFilesToCache();
+    }
+
+    @Override
+    protected void onStart() {
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction("com.taut0logy.readerforu.PDF_FILE_UPDATED");
+        //intentFilter.addAction("com.taut0logy.readerforu.PDF_FILE_DELETED");
+        registerReceiver(pdfFileUpdatedReceiver, intentFilter);
+        super.onStart();
     }
 
     @SuppressLint("NotifyDataSetChanged")
     @Override
-    protected void onStart() {
-        pdfFiles.sort(this::comparePDFFiles);
-        //pdfFileAdapter.notifyDataSetChanged();
-        super.onStart();
+    protected void onResume() {
+        pdfFileAdapter.notifyDataSetChanged();
+        super.onResume();
     }
 
-//    @SuppressLint("NotifyDataSetChanged")
-//    @Override
-//    protected void onResume() {
-//        super.onResume();
-//        pdfFiles.sort(this::comparePDFFiles);
-//        pdfFileAdapter.notifyDataSetChanged();
-//    }
+    private BroadcastReceiver pdfFileUpdatedReceiver = new BroadcastReceiver() {
+        @SuppressLint("NotifyDataSetChanged")
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent.getAction().equals("com.taut0logy.readerforu.PDF_FILE_UPDATED")) {
+                int position = intent.getIntExtra("position", -1);
+                if(position != -1) {
+                    pdfFiles.sort(BrowserActivity.this::comparePDFFiles);
+                    //pdfFileAdapter.notifyDataSetChanged();
+                }
+            }
+        }
+    };
 
     private boolean isPdfCacheAvailable() {
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
@@ -326,11 +352,9 @@ public class BrowserActivity extends AppCompatActivity {
                 }
             }
         } catch (SecurityException e) {
-            e.printStackTrace();
-            // Handle permission denied
+            Log.e("PDFErr", "Permission denied: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
-            // Handle other exceptions
+            Log.e("PDFErr", "Load Error: " + e.getMessage());
         }
 
         if (!allFiles.isEmpty()) {
@@ -411,16 +435,20 @@ public class BrowserActivity extends AppCompatActivity {
                 fileOutputStream.close();
                 fileDescriptor.close();
             }
-            //boolean isFav = favList.has(path);
-            //Log.e("PDFErr", "PDF File: " + name + " " + author + " " + description + " " + path + " " + thumbnail.getAbsolutePath() + " " + currPage + " " + pages);
             String bookName=(title==null || title.isEmpty() || title.equals("null"))?name:title;
             PDFFile pdfFile = new PDFFile(bookName, author, description, path, thumbnail.getAbsolutePath(), currPage, pages, isFav, modified, lastRead);
             pdfFiles.add(pdfFile);
             if(isFav)
                 favPdfFiles.add(pdfFile);
         } catch (Exception e) {
-            Log.e("PDFErr", "Error: " + e.getMessage());
-            e.printStackTrace();
+            if(Objects.requireNonNull(e.getMessage()).contains("password")) {
+                Log.d("PDFErr", "Protected PDF: " + name);
+                PDFFile pdfFile = new PDFFile(name, "Protected", "Protected", path, "__protected", 0, 0, false, modified, lastRead);
+                pdfFiles.add(pdfFile);
+            } else {
+                Log.e("PDFErr", "Error: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
     public static void showAboutDialog(Context context) {

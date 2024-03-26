@@ -4,6 +4,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
@@ -25,6 +26,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 
 public class EditActivity extends AppCompatActivity {
     private EditText etName, etAuthor, etDescription, etCreator;
@@ -129,11 +131,24 @@ public class EditActivity extends AppCompatActivity {
                 }
             }).run();
         } catch (Exception e) {
+            if(Objects.requireNonNull(e.getMessage()).contains("password")) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Error");
+                builder.setMessage("File is encrypted");
+                builder.setCancelable(false);
+                builder.setPositiveButton("OK", (dialog, which) -> finish());
+                builder.show();
+            }
             Log.e("PDFErr", "saveChanges: ", e);
             e.printStackTrace();
         }
         pdfFile.setModified(new File(pdfFile.getLocation()).lastModified());
-        BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
+        //BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
+        BrowserActivity.getPdfFiles().set(position, pdfFile);
+        Intent intent = new Intent("com.taut0logy.readerforu.PDF_FILE_UPDATED");
+        intent.putExtra("position", position);
+        //intent.putExtra("pdfFile", pdfFile);
+        sendBroadcast(intent);
         SharedPreferences sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         try {

@@ -37,4 +37,5 @@
     <string name="edit_title">Edit Title</string>
     <string name="cover_image">Cover Image</string>
     <string name="filter">Filter</string>
+    <string name="sort">Sort</string>
 </resources>

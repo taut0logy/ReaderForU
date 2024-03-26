@@ -10,6 +10,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,16 +29,20 @@ import org.json.JSONArray;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileViewHolder>{
+public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileViewHolder> implements Filterable {
 
     private final List<PDFFile> pdfFiles;
+    private final List<PDFFile> filteredPdfFiles;
     private final Context context;
     private static final String PDF_CACHE_KEY = "pdf_cache";
 
     public PDFFileAdapter(List<PDFFile> pdfFiles, Context context){
         this.pdfFiles = pdfFiles;
+        this.filteredPdfFiles = new ArrayList<>(pdfFiles);
         this.context = context;
     }
 
@@ -60,8 +66,12 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         progress = Math.round(progress*100.0)/100.0f;
         String progressStr = progress+"%";
         holder.progress.setText(progressStr);
-        Bitmap bitmap = pdfFile.getThumbnail();
-        holder.thumbnail.setImageBitmap(bitmap);
+        if(pdfFile.getImagePath().equals("__protected")) {
+            holder.thumbnail.setImageResource(R.drawable.lock);
+        } else {
+            Bitmap bitmap = pdfFile.getThumbnail();
+            holder.thumbnail.setImageBitmap(bitmap);
+        }
         if(pdfFile.getFavourite()) {
             holder.favButton.setImageResource(R.drawable.star_solid);
         } else {
@@ -74,6 +84,10 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             context.startActivity(intent);
         });
         holder.favButton.setOnClickListener(v -> {
+            if(pdfFile.getImagePath().equals("__protected")) {
+                Toast.makeText(context, "Can't add locked file to favourites", Toast.LENGTH_SHORT).show();
+                return;
+            }
             String pdfFilePath = pdfFile.getLocation();
             try {
                 PdfReader pdfReader = new PdfReader(pdfFilePath);
@@ -109,6 +123,8 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
                 Log.e("PDFErr", "onBindViewHolder: " + e.getClass().getName(), e);
                 e.printStackTrace();
             }
+            //TODO: 26/03/2024     sync the changes with the pdfFiles list
+            int position1 = BrowserActivity.getPdfFiles().indexOf(pdfFile);
             SharedPreferences sharedPreferences = context.getSharedPreferences("reader", Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
             try {
@@ -120,6 +136,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
                 e.printStackTrace();
             }
             pdfFiles.set(position, pdfFile);
+            notifyDataSetChanged();
         });
 
         holder.deleteButton.setOnClickListener(v -> {
@@ -127,12 +144,20 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             showConfirmationDialog(context, position);
         });
         holder.editButton.setOnClickListener(v -> {
+            if(pdfFile.getImagePath().equals("__protected")) {
+                Toast.makeText(context, "This file is protected", Toast.LENGTH_SHORT).show();
+                return;
+            }
             //edit the file
             Intent intent = new Intent(context, EditActivity.class);
             intent.putExtra("position", position);
             context.startActivity(intent);
         });
         holder.infoButton.setOnClickListener(v -> {
+            if(pdfFile.getImagePath().equals("__protected")) {
+                Toast.makeText(context, "This file is protected", Toast.LENGTH_SHORT).show();
+                return;
+            }
             Intent intent = new Intent(context, InfoActivity.class);
             intent.putExtra("position", position);
             context.startActivity(intent);
@@ -143,6 +168,39 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
     public int getItemCount() {
         return pdfFiles.size();
     }
+
+    @Override
+    public Filter getFilter() {
+        return searchFilter;
+    }
+
+    Filter searchFilter = new Filter() {
+        @Override
+        protected FilterResults performFiltering(CharSequence constraint) {
+            List<PDFFile> filteredList = new java.util.ArrayList<>();
+            if(constraint == null || constraint.length() == 0) {
+                filteredList.addAll(filteredPdfFiles);
+            } else {
+                String filterPattern = constraint.toString().toLowerCase().trim();
+                for(PDFFile pdfFile : pdfFiles) {
+                    if(pdfFile.getName().toLowerCase().contains(filterPattern) || pdfFile.getAuthor().toLowerCase().contains(filterPattern)) {
+                        filteredList.add(pdfFile);
+                    }
+                }
+            }
+            FilterResults results = new FilterResults();
+            results.values = filteredList;
+            return results;
+        }
+
+        @SuppressLint("NotifyDataSetChanged")
+        @Override
+        protected void publishResults(CharSequence constraint, FilterResults results) {
+            filteredPdfFiles.clear();
+            filteredPdfFiles.addAll((Collection<? extends PDFFile>) results.values);
+            notifyDataSetChanged();
+        }
+    };
 
     public static class PDFFileViewHolder extends RecyclerView.ViewHolder {
 
@@ -214,10 +272,12 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            removePDFFileAt(position);
             Toast.makeText(context, "Deleted Successfully", Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(context, "Failed to delete", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "File doesn't exist", Toast.LENGTH_SHORT).show();
         }
+        //removePDFFileAt(position);
+        pdfFiles.remove(position);
+        notifyItemRemoved(position);
     }
 }

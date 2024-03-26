@@ -22,6 +22,7 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.pdf.ReaderProperties;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,6 +30,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 
 public class InfoActivity extends AppCompatActivity {
     private static final String PDF_CACHE_KEY = "pdf_cache";
@@ -53,7 +55,10 @@ public class InfoActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         int position = getIntent().getIntExtra("position", 0);
         pdfFile = BrowserActivity.getPdfFiles().get(getIntent().getIntExtra("position", 0));
-        imageView.setImageBitmap(pdfFile.getThumbnail());
+        if(pdfFile.getImagePath().equals("__protected")) {
+            imageView.setImageResource(R.drawable.lock);
+        } else
+            imageView.setImageBitmap(pdfFile.getThumbnail());
         bookName.setText(pdfFile.getName());
         authorName.setText(pdfFile.getAuthor());
         description.setText(pdfFile.getDescription());
@@ -62,19 +67,42 @@ public class InfoActivity extends AppCompatActivity {
         PdfReader reader;
         try {
             reader = new PdfReader(pdfFile.getLocation());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            PdfDocument pdfDocument_ = new PdfDocument(reader);
+            PdfDocumentInfo info = pdfDocument_.getDocumentInfo();
+            modified.setText(info.getCreator());
+            pdfDocument_.close();
+        } catch (Exception e) {
+            Log.e("PDFErr", "InfoActivity onCreate: ", e);
+            if(Objects.requireNonNull(e.getMessage()).contains("password")) {
+                String password = getIntent().getStringExtra("password");
+                if(password == null) {
+                    Toast.makeText(this, "File is encrypted", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+                byte[] passwordB = getIntent().getStringExtra("password").getBytes();
+                try {
+                    reader = new PdfReader(pdfFile.getLocation(), new ReaderProperties().setPassword(passwordB));
+                    PdfDocument pdfDocument_ = new PdfDocument(reader);
+                    PdfDocumentInfo info = pdfDocument_.getDocumentInfo();
+                    modified.setText(info.getCreator());
+                    pdfDocument_.close();
+                } catch (Exception Exception) {
+                    Log.e("PDFErr", "infoActivity password: ", e);
+                    Toast.makeText(this, "File is encrypted", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+            }
         }
-        PdfDocument pdfDocument_ = new PdfDocument(reader);
-        PdfDocumentInfo info = pdfDocument_.getDocumentInfo();
-        modified.setText(info.getCreator());
-        pdfDocument_.close();
         String sizeStr = (new File(pdfFile.getLocation()).length()/1024)+" KB";
         size.setText(sizeStr);
         location.setText(pdfFile.getLocation());
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if(id == R.id.action_favourite) {
+                if (pdfFile.getImagePath().equals("__protected")) {
+                    Toast.makeText(this, "Can't add locked file to favourites", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
                 MenuItem favButton = toolbar.getMenu().findItem(R.id.action_favourite);
                 String pdfFilePath = pdfFile.getLocation();
                 try {
@@ -120,7 +148,12 @@ public class InfoActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
+                //BrowserActivity.getPdfFileAdapter().updatePDFFileAt(position, pdfFile);
+                Intent intent = new Intent("com.taut0logy.readerforu.PDF_FILE_UPDATED");
+                BrowserActivity.getPdfFiles().set(position, pdfFile);
+                intent.putExtra("position", position);
+                //intent.putExtra("pdfFile", pdfFile);
+                sendBroadcast(intent);
                 return true;
             }
             if(id == R.id.action_about) {
@@ -137,6 +170,7 @@ public class InfoActivity extends AppCompatActivity {
             if(id == R.id.action_delete) {
                 AlertDialog.Builder builder = getBuilder(position);
                 builder.create().show();
+                finish();
                 return true;
             }
             return false;
@@ -166,7 +200,11 @@ public class InfoActivity extends AppCompatActivity {
                     } else {
                         Log.d("PDFFileAdapter", "showConfirmationDialog: Thumbnail not deleted");
                     }
-                    BrowserActivity.getPdfFileAdapter().removePDFFileAt(position);
+                    //BrowserActivity.getPdfFileAdapter().removePDFFileAt(position);
+                    BrowserActivity.getPdfFiles().remove(position);
+                    //Intent intent = new Intent("com.taut0logy.readerforu.PDF_FILE_DELETED");
+                    //intent.putExtra("position", position);
+                    //sendBroadcast(intent);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
