@@ -2,6 +2,7 @@ package com.taut0logy.readerforu;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -9,6 +10,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,6 +19,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.github.barteksc.pdfviewer.PDFView;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
+import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.ReaderProperties;
 
 import org.json.JSONArray;
@@ -24,6 +27,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -33,7 +37,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     private TextView etCurrPage;
     TextView tvBookName, tvAuthorName, tvTotalPages;
     private boolean barsVisible = true;
-    private int recyclerPosition;
+    private int recyclerPosition = -1;
     private ConstraintLayout topBar, bottomBar;
     private PDFView pdfView;
     private boolean isNight = false;
@@ -56,11 +60,45 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         toggleDark = findViewById(R.id.toggleDark);
         infoBtn = findViewById(R.id.infobtn);
         showDialog = findViewById(R.id.showDialog);
-        recyclerPosition = getIntent().getIntExtra("position", 0);
-        pdfFile = BrowserActivity.getPdfFiles().get(recyclerPosition);
+
+        Intent intent = getIntent();
+        if(Intent.ACTION_VIEW.equals(intent.getAction())) {
+            //String path = Objects.requireNonNull(intent.getData()).getPath();
+            try {
+                Uri uri = intent.getData();
+                if(uri == null) {
+                    Toast.makeText(this, "Invalid file", Toast.LENGTH_SHORT).show();
+                    Intent intent2 = new Intent(this, BrowserActivity.class);
+                    startActivity(intent2);
+                    finish();
+                    return;
+                }
+                String path = uri.getPath();
+                PdfReader reader = new PdfReader(path);
+                PdfDocument pdfDocument = new PdfDocument(reader);
+                int pages = pdfDocument.getNumberOfPages();
+                String title = pdfDocument.getDocumentInfo().getTitle();
+                String author = pdfDocument.getDocumentInfo().getAuthor();
+                if(author == null || author.isEmpty() || author.equals("null"))
+                    author = "Unknown";
+                String description = pdfDocument.getDocumentInfo().getSubject();
+                if(description == null || description.isEmpty() || description.equals("null"))
+                    description = "No description";
+                boolean isFav = pdfDocument.getDocumentInfo().getMoreInfo("favourite")!= null && pdfDocument.getDocumentInfo().getMoreInfo("favourite").equals("true");
+                pdfDocument.close();
+                pdfFile = new PDFFile(title, author, description, path, null, 0, pages, isFav, System.currentTimeMillis(), System.currentTimeMillis());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            recyclerPosition = intent.getIntExtra("position", 0);
+            pdfFile = BrowserActivity.getPdfFiles().get(recyclerPosition);
+        }
+
         if(pdfFile == null) {
-            Intent intent = new Intent(this, BrowserActivity.class);
-            startActivity(intent);
+            Toast.makeText(this, "Invalid file", Toast.LENGTH_SHORT).show();
+            Intent intent2 = new Intent(this, BrowserActivity.class);
+            startActivity(intent2);
             finish();
             return;
         }
@@ -87,15 +125,19 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         showDialog.setOnClickListener(v -> showJumpToPageDialog(pdfFile.getTotalPages(), nowPage));
 
         infoBtn.setOnClickListener(v -> {
-            Intent intent = new Intent(ReaderActivity.this, InfoActivity.class);
-            intent.putExtra("position", recyclerPosition);
-            startActivity(intent);
+            Intent intent3 = new Intent(ReaderActivity.this, InfoActivity.class);
+            intent3.putExtra("position", recyclerPosition);
+            startActivity(intent3);
         });
         loadPdf(location);
     }
 
     @Override
     protected void onPause() {
+        if(recyclerPosition == -1) {
+            super.onPause();
+            return;
+        }
         pdfFile.setCurrPage(nowPage);
         //BrowserActivity.getPdfFileAdapter().updatePDFFileAt(recyclerPosition, pdfFile);
         BrowserActivity.getPdfFiles().set(recyclerPosition, pdfFile);
@@ -120,6 +162,10 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
 
     @Override
     protected void onStop() {
+        if(recyclerPosition == -1) {
+            super.onStop();
+            return;
+        }
         pdfFile.setCurrPage(nowPage);
         //BrowserActivity.getPdfFileAdapter().updatePDFFileAt(recyclerPosition, pdfFile);
         BrowserActivity.getPdfFiles().set(recyclerPosition, pdfFile);
@@ -138,6 +184,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         isNight = sharedPreferences.getBoolean("isNight", false);
         nowPage = sharedPreferences.getInt(pdfFile.getLocation() + "nowPage", 0);
         Log.d("PDFErr", "loadPreferences: " + nowPage + " " + isNight);
+        if(recyclerPosition == -1) return;
         SharedPreferences.Editor editor = sharedPreferences.edit();
         new Thread(() -> {
             editor.putLong(pdfFile.getLocation() + "_lastRead", pdfFile.getLastRead());
@@ -170,19 +217,8 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         configurator.defaultPage(Math.max(0, nowPage - 1));
         configurator.load();
         configurePdfView(configurator);
-//        try {
-//            configurator.load();
-//            configurePdfView(configurator);
-//        } catch (Exception e) {
-//            Log.e("PDFErr", "loadPdf: ", e);
-//            if (Objects.requireNonNull(e.getMessage()).contains("password")) {
-//                promptUserForPassword(location);
-//            } else {
-//                finish();
-//            }
-//            return;
-//        }
-        //configurePdfView(configurator);
+        pdfView.setNightMode(isNight);
+        pdfView.loadPages();
     }
 
     private void configurePdfView(PDFView.Configurator configurator) {
@@ -210,9 +246,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             toggleBarsVisibility();
             return true;
         });
-        if (isNight) {
-            pdfView.setNightMode(true);
-        }
     }
 
     private int promptUserForPassword(String location) {
