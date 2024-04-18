@@ -83,8 +83,8 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         }
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, ReaderActivity.class);
-            intent.putExtra("pdfFile", pdfFile);
-            intent.putExtra("position", position);
+            int position1 = BrowserActivity.getPdfFiles().indexOf(pdfFile);
+            intent.putExtra("position", position1);
             context.startActivity(intent);
         });
         holder.favButton.setOnClickListener(v -> {

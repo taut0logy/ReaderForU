@@ -477,10 +477,25 @@ public class BrowserActivity extends AppCompatActivity {
                 return pdfFile1.getName().compareTo(pdfFile2.getName())*sortDirection;
             case 2:
                 return pdfFile1.getAuthor().compareTo(pdfFile2.getAuthor())*sortDirection;
-            case 3:
-                return (int) (pdfFile1.getModified()-pdfFile2.getModified())*sortDirection;
-            case 4:
-                return (int) (pdfFile2.getLastRead()-pdfFile1.getLastRead())*sortDirection;
+            case 3: {
+                long diff = pdfFile1.getModified() - pdfFile2.getModified();
+                if(diff == 0)
+                    return 0;
+                else if(diff > 0)
+                    return -1*sortDirection;
+                else
+                    return 1*sortDirection;
+                //return (int) (pdfFile1.getModified() - pdfFile2.getModified()) * sortDirection;
+            }
+            case 4: {
+                if(pdfFile1.getLastRead() == pdfFile2.getLastRead())
+                    return 0;
+                else if(pdfFile1.getLastRead() > pdfFile2.getLastRead())
+                    return -1*sortDirection;
+                else
+                    return 1*sortDirection;
+                //return (int) (pdfFile2.getLastRead() - pdfFile1.getLastRead()) * sortDirection;
+            }
             default:
                 return 0;
         }
