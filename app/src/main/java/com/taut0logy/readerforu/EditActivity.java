@@ -48,7 +48,19 @@ public class EditActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         position = getIntent().getIntExtra("position", 0);
         pdfFile = BrowserActivity.getPdfFiles().get(position);
-        imageView.setImageBitmap(pdfFile.getThumbnail());
+        if(pdfFile.getImagePath().equals("__protected")) {
+            imageView.setImageResource(R.drawable.lock);
+        } else {
+            if(pdfFile.getThumbnail() == null)
+                imageView.setImageResource(R.drawable.icon);
+            else
+                imageView.setImageBitmap(pdfFile.getThumbnail());
+        }
+
+        etName.setHint(pdfFile.getName());
+        etAuthor.setHint(pdfFile.getAuthor().equals("Unknown") ? "Add Author" : pdfFile.getAuthor());
+        etDescription.setHint(pdfFile.getDescription().equals("No description") ? "Add Description" : pdfFile.getDescription());
+        etCreator.setHint("Add Creator");
         saveButton.setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Save Changes");
@@ -58,7 +70,6 @@ public class EditActivity extends AppCompatActivity {
                     saveChanges();
                 } catch (JSONException e) {
                     Log.e("EditActivity", "onCreate: ", e);
-                    e.printStackTrace();
                 }
                 finish();
             });
@@ -125,7 +136,6 @@ public class EditActivity extends AppCompatActivity {
                     dialog.dismiss();
                 } catch (Exception e) {
                     Log.e("PDFErr", "saveChanges: ", e);
-                    e.printStackTrace();
                 }
             }).run();
         } catch (Exception e) {
@@ -138,7 +148,6 @@ public class EditActivity extends AppCompatActivity {
                 builder.show();
             }
             Log.e("PDFErr", "saveChanges: ", e);
-            e.printStackTrace();
         }
         pdfFile.setModified(new File(pdfFile.getLocation()).lastModified());
         BrowserActivity.getPdfFiles().set(position, pdfFile);
@@ -154,7 +163,6 @@ public class EditActivity extends AppCompatActivity {
             editor.apply();
         } catch (JSONException e) {
             Log.e("EditActivity", "saveChanges: ", e);
-            e.printStackTrace();
         }
     }
 

@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -15,6 +16,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.FileProvider;
 
 import com.github.barteksc.pdfviewer.PDFView;
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -28,12 +30,14 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ReaderActivity extends AppCompatActivity implements JumpToPageFragment.JumpToPageListener {
     private static final String PDF_CACHE_KEY = "pdf_cache";
     private PDFFile pdfFile;
+    private TextToSpeech textToSpeech;
     private TextView etCurrPage;
     TextView tvBookName, tvAuthorName, tvTotalPages;
     private boolean barsVisible = true;
@@ -48,7 +52,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reader);
-        ImageButton toggleDark, infoBtn;
+        ImageButton toggleDark, infoBtn, sharebtn, speechbtn;
         Button showDialog;
         pdfView = findViewById(R.id.pdfView);
         topBar = findViewById(R.id.topBar);
@@ -59,7 +63,10 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         etCurrPage = findViewById(R.id.etCurrentPage);
         toggleDark = findViewById(R.id.toggleDark);
         infoBtn = findViewById(R.id.infobtn);
+        sharebtn = findViewById(R.id.sharebtn);
+        speechbtn = findViewById(R.id.speechbtn);
         showDialog = findViewById(R.id.showDialog);
+
 
         Intent intent = getIntent();
         if(Intent.ACTION_VIEW.equals(intent.getAction())) {
@@ -104,10 +111,18 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         }
         pdfFile.setLastRead(System.currentTimeMillis());
         loadPreferences();
+
+        textToSpeech = new TextToSpeech(this, status -> {
+            if (status != TextToSpeech.ERROR) {
+                textToSpeech.setLanguage(Locale.US);
+            }
+        });
+
         tvBookName.setText(pdfFile.getName());
         tvAuthorName.setText(pdfFile.getAuthor());
         tvTotalPages.setText(String.valueOf(pdfFile.getTotalPages()));
         String location = pdfFile.getLocation();
+
         toggleDark.setOnClickListener(v -> {
             if (isNight) {
                 pdfView.setNightMode(false);
@@ -122,6 +137,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             editor.putBoolean("isNight", isNight);
             editor.apply();
         });
+
         showDialog.setOnClickListener(v -> showJumpToPageDialog(pdfFile.getTotalPages(), nowPage));
 
         infoBtn.setOnClickListener(v -> {
@@ -129,6 +145,31 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             intent3.putExtra("position", recyclerPosition);
             startActivity(intent3);
         });
+
+        sharebtn.setOnClickListener(v -> {
+//            if(pdfFile.getImagePath().equals("__protected")) {
+//                Toast.makeText(this, "This file is protected", Toast.LENGTH_SHORT).show();
+//                return;
+//            }
+            File pdfFile = new File(location);
+            Uri pdfUri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".provider", pdfFile);
+            Intent shareIntent = new Intent();
+            shareIntent.setAction(Intent.ACTION_SEND);
+            shareIntent.putExtra(Intent.EXTRA_STREAM, pdfUri);
+            shareIntent.setType("application/pdf");
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(shareIntent, "Share PDF Via"));
+        });
+
+        speechbtn.setOnClickListener(v -> {
+            if(textToSpeech.isSpeaking()) {
+                textToSpeech.stop();
+                return;
+            }
+            String text = extractTextFromPDF();
+            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+        });
+
         loadPdf(location);
     }
 
@@ -154,7 +195,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             editor.putString(PDF_CACHE_KEY, jsonArray.toString());
         } catch (JSONException ex) {
             Log.d("PDFErr", "onPause: " + ex.getMessage());
-            ex.printStackTrace();
         }
         editor.apply();
         super.onPause();
@@ -176,6 +216,15 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         editor.putInt(pdfFile.getLocation() + "nowPage", nowPage);
         editor.apply();
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
+        super.onDestroy();
     }
 
     private void loadPreferences() {
@@ -333,5 +382,21 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     private void hideBarsWithAnimation() {
         topBar.animate().translationY(-topBar.getHeight() - 100).setDuration(300).start();
         bottomBar.animate().translationY(bottomBar.getHeight() + 100).setDuration(300).start();
+    }
+
+    String extractTextFromPDF() {
+        try {
+            StringBuilder text = new StringBuilder();
+            PdfDocument pdfDocument = new PdfDocument(new PdfReader(pdfFile.getLocation()));
+            for (int i = nowPage; i <= pdfDocument.getNumberOfPages(); i++) {
+                text.append(pdfDocument.getPage(i).getPdfObject().toString());
+            }
+            pdfDocument.close();
+            Log.d("PDFErr", "extractTextFromPage: " + text.toString());
+            return text.toString();
+        } catch (IOException e) {
+            Log.e("PDFErr", "extractTextFromPage: ", e);
+            return "";
+        }
     }
 }

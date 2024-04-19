@@ -57,8 +57,12 @@ public class InfoActivity extends AppCompatActivity {
         pdfFile = BrowserActivity.getPdfFiles().get(getIntent().getIntExtra("position", 0));
         if(pdfFile.getImagePath().equals("__protected")) {
             imageView.setImageResource(R.drawable.lock);
-        } else
-            imageView.setImageBitmap(pdfFile.getThumbnail());
+        } else {
+            if(pdfFile.getThumbnail() == null)
+                imageView.setImageResource(R.drawable.icon);
+            else
+                imageView.setImageBitmap(pdfFile.getThumbnail());
+        }
         bookName.setText(pdfFile.getName());
         authorName.setText(pdfFile.getAuthor());
         description.setText(pdfFile.getDescription());

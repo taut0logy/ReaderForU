@@ -38,4 +38,7 @@
     <string name="cover_image">Cover Image</string>
     <string name="filter">Filter</string>
     <string name="sort">Sort</string>
+    <string name="share_current_file">Share current file</string>
+    <string name="read_the_current_page_aloud">Read the current page aloud</string>
+    <string name="no_pdf_files_found">No PDF Files found</string>
 </resources>

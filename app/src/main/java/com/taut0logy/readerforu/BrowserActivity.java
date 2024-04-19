@@ -379,7 +379,7 @@ public class BrowserActivity extends AppCompatActivity {
             filteredPdfFiles.sort(this::comparePDFFiles);
             savePDFFilesToCache();
         } else {
-            runOnUiThread(() -> statusText.setText("No PDF Files found"));
+            runOnUiThread(() -> statusText.setText(R.string.no_pdf_files_found));
         }
     }
 
@@ -402,7 +402,7 @@ public class BrowserActivity extends AppCompatActivity {
                 description = "No description";
             boolean isFav = pdfDocument.getDocumentInfo().getMoreInfo("favourite")!= null && pdfDocument.getDocumentInfo().getMoreInfo("favourite").equals("true");
             pdfDocument.close();
-            File thumbnail = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/thumbnails/" + name + ".png");
+            File thumbnail = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/.thumbnails/" + name + ".png");
             if (!thumbnail.exists()) {
                 // Create thumbnail
                 ParcelFileDescriptor fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
@@ -428,7 +428,6 @@ public class BrowserActivity extends AppCompatActivity {
                 pdfFiles.add(pdfFile);
             } else {
                 Log.e("PDFErr", "Error: " + e.getMessage());
-                e.printStackTrace();
             }
         }
     }
@@ -474,9 +473,9 @@ public class BrowserActivity extends AppCompatActivity {
         }
         switch (sortParameter) {
             case 1:
-                return pdfFile1.getName().compareTo(pdfFile2.getName())*sortDirection;
+                return pdfFile1.getName().toLowerCase().compareTo(pdfFile2.getName().toLowerCase())*sortDirection;
             case 2:
-                return pdfFile1.getAuthor().compareTo(pdfFile2.getAuthor())*sortDirection;
+                return pdfFile1.getAuthor().toLowerCase().compareTo(pdfFile2.getAuthor().toLowerCase())*sortDirection;
             case 3: {
                 long diff = pdfFile1.getModified() - pdfFile2.getModified();
                 if(diff == 0)
@@ -484,7 +483,7 @@ public class BrowserActivity extends AppCompatActivity {
                 else if(diff > 0)
                     return -1*sortDirection;
                 else
-                    return 1*sortDirection;
+                    return sortDirection;
                 //return (int) (pdfFile1.getModified() - pdfFile2.getModified()) * sortDirection;
             }
             case 4: {
@@ -493,7 +492,7 @@ public class BrowserActivity extends AppCompatActivity {
                 else if(pdfFile1.getLastRead() > pdfFile2.getLastRead())
                     return -1*sortDirection;
                 else
-                    return 1*sortDirection;
+                    return sortDirection;
                 //return (int) (pdfFile2.getLastRead() - pdfFile1.getLastRead()) * sortDirection;
             }
             default:

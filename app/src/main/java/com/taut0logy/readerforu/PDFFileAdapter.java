@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,6 +20,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.imageview.ShapeableImageView;
@@ -74,7 +77,11 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             holder.thumbnail.setImageResource(R.drawable.lock);
         } else {
             Bitmap bitmap = pdfFile.getThumbnail();
-            holder.thumbnail.setImageBitmap(bitmap);
+            if(bitmap == null) {
+                bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.icon);
+            }
+            else
+                holder.thumbnail.setImageBitmap(bitmap);
         }
         if(pdfFile.getFavourite()) {
             holder.favButton.setImageResource(R.drawable.star_solid);
@@ -167,6 +174,14 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             intent.putExtra("position", position1);
             context.startActivity(intent);
         });
+
+        holder.shareButton.setOnClickListener(v -> {
+            if(pdfFile.getImagePath().equals("__protected")) {
+                Toast.makeText(context, "This file is protected", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            sharePDF(v, context, pdfFile.getLocation());
+        });
     }
 
     @Override
@@ -212,7 +227,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
 
         ShapeableImageView thumbnail;
         TextView name, author, totalPages;
-        ImageButton favButton, deleteButton, editButton, infoButton;
+        ImageButton favButton, deleteButton, editButton, infoButton, shareButton;
         ProgressBar progress;
         public PDFFileViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -225,6 +240,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             deleteButton = itemView.findViewById(R.id.deleteButton);
             editButton = itemView.findViewById(R.id.editButton);
             infoButton = itemView.findViewById(R.id.infoButton);
+            shareButton = itemView.findViewById(R.id.shareButton);
         }
     }
 
@@ -289,4 +305,17 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         filteredPdfFiles.remove(position);
         notifyItemRemoved(position);
     }
+
+    public void sharePDF(View view, Context context, String pdfFilePath) {
+        File pdfFile = new File(pdfFilePath);
+        Uri pdfUri = FileProvider.getUriForFile(context, context.getApplicationContext().getPackageName() + ".provider", pdfFile);
+        Intent shareIntent = new Intent();
+        shareIntent.setAction(Intent.ACTION_SEND);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, pdfUri);
+        shareIntent.setType("application/pdf");
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        context.startActivity(Intent.createChooser(shareIntent, "Share PDF Via"));
+    }
+
 }

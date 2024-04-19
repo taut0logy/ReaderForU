@@ -1,5 +1,6 @@
 package com.taut0logy.readerforu;
 
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
@@ -74,6 +75,9 @@ public class PDFFile implements Serializable {
 
     public Bitmap getThumbnail() {
         File file = new File(imagePath);
+        if(!file.exists()) {
+            return null;
+        }
         return BitmapFactory.decodeFile(file.getAbsolutePath());
     }
 

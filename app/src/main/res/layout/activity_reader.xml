@@ -17,7 +17,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             >
-
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/topBar"
                 android:layout_width="match_parent"
@@ -77,18 +76,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_alignParentBottom="true"
+                android:layout_marginBottom="-2dp"
                 android:background="@drawable/toolbar_bottom_bg"
                 android:backgroundTint="#11235A"
                 android:elevation="5dp">
 
                 <Button
-                    android:text="@string/jump"
-                    android:textColor="@color/transparent"
                     android:id="@+id/showDialog"
                     android:layout_width="wrap_content"
                     android:layout_height="70dp"
-                    android:backgroundTint="@color/transparent"
-                    android:shadowRadius="0"
+                    android:background="@color/transparent"
+                    android:text="@string/jump"
+                    android:textColor="@color/transparent"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
@@ -143,12 +142,42 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@color/transparent"
+                    android:contentDescription="@string/toggle_dark_mode"
                     android:src="@drawable/moon_solid"
-                    android:paddingStart="10dp"
                     app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/speechbtn"
+                    app:layout_constraintHorizontal_bias="0.5"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    android:contentDescription="@string/toggle_dark_mode"
+                    tools:ignore="RtlSymmetry" />
+
+                <ImageButton
+                    android:id="@+id/speechbtn"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@color/transparent"
+                    android:contentDescription="@string/read_the_current_page_aloud"
+                    android:src="@drawable/ear_listen_solid"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/showDialog"
+                    app:layout_constraintHorizontal_bias="0.5"
+                    app:layout_constraintStart_toEndOf="@+id/toggleDark"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintVertical_bias="0.476"
+                    tools:ignore="RtlSymmetry" />
+
+                <ImageButton
+                    android:id="@+id/sharebtn"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@color/transparent"
+                    android:contentDescription="@string/share_current_file"
+                    android:src="@drawable/share_nodes_solid"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/infobtn"
+                    app:layout_constraintHorizontal_bias="0.5"
+                    app:layout_constraintStart_toEndOf="@+id/showDialog"
+                    app:layout_constraintTop_toTopOf="parent"
                     tools:ignore="RtlSymmetry" />
 
                 <ImageButton
@@ -156,12 +185,14 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@color/transparent"
+                    android:contentDescription="@string/info_on_current_file"
                     android:src="@drawable/circle_info_solid__1_"
-                    android:paddingEnd="10dp"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.5"
+                    app:layout_constraintStart_toEndOf="@+id/sharebtn"
                     app:layout_constraintTop_toTopOf="parent"
-                    android:contentDescription="@string/info_on_current_file"
+                    app:layout_constraintVertical_bias="0.476"
                     tools:ignore="RtlSymmetry" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>

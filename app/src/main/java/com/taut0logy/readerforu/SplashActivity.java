@@ -46,7 +46,7 @@ public class SplashActivity extends AppCompatActivity {
         if (!folder.exists()) {
             res1 = folder.mkdir();
         }
-        File folder1 = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/thumbnails");
+        File folder1 = new File(Environment.getExternalStorageDirectory() + "/ReaderForU/.thumbnails");
         if (!folder1.exists()) {
             res2 = folder1.mkdir();
         }
