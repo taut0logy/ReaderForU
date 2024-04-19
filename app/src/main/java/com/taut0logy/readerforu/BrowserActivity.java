@@ -31,6 +31,7 @@ import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.github.barteksc.pdfviewer.BuildConfig;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfReader;
 
@@ -456,10 +457,11 @@ public class BrowserActivity extends AppCompatActivity {
     private static AlertDialog.Builder getBuilder(Context context) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("About ReaderForU");
+        String version = "1.2";
         builder.setMessage(
                 "ReaderForU is a simple PDF reader app.\n" +
                 "Developed by Raufun Ahsan\n" +
-                "Version 1.0.0\n" +
+                "Version" + version + "\n" +
                 "© 2024 Taut0logy\n" +
                 "All rights reserved."
         );

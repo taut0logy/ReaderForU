@@ -122,9 +122,15 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
 
         textToSpeech = new TextToSpeech(this, status -> {
             if (status != TextToSpeech.ERROR) {
-                textToSpeech.setLanguage(Locale.US);
+                //textToSpeech.setLanguage(Locale.US);
+                textToSpeech.setSpeechRate(0.8f);
             }
-        });
+        }, "com.google.android.tts");
+//        textToSpeech = new TextToSpeech(this, status -> {
+//            if (status != TextToSpeech.ERROR) {
+//                textToSpeech.setLanguage(Locale.US);
+//            }
+//        });
 
         tvBookName.setText(pdfFile.getName());
         tvAuthorName.setText(pdfFile.getAuthor());
