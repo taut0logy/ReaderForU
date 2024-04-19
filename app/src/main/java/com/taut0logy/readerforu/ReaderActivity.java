@@ -4,12 +4,15 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,6 +26,7 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.ReaderProperties;
+import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,8 +34,11 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ReaderActivity extends AppCompatActivity implements JumpToPageFragment.JumpToPageListener {
@@ -81,6 +88,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
                     return;
                 }
                 String path = uri.getPath();
+                assert path != null;
                 PdfReader reader = new PdfReader(path);
                 PdfDocument pdfDocument = new PdfDocument(reader);
                 int pages = pdfDocument.getNumberOfPages();
@@ -164,10 +172,74 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         speechbtn.setOnClickListener(v -> {
             if(textToSpeech.isSpeaking()) {
                 textToSpeech.stop();
+                Toast.makeText(this, "Stopped speaking", Toast.LENGTH_SHORT).show();
                 return;
             }
-            String text = extractTextFromPDF();
-            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+//            ExecutorService executor = Executors.newSingleThreadExecutor();
+//            Handler handler = new Handler(Looper.getMainLooper());
+//
+//            Future<ArrayList<String>> future = executor.submit(this::extractTextFromPDF);
+//
+//            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+//            builder.setTitle("Please wait");
+//            builder.setMessage("Extracting text from PDF...");
+//            builder.setCancelable(false);
+//            builder.setNegativeButton("Cancel", (dialog, which) -> {
+//                if (!future.isDone()) {
+//                    future.cancel(true);
+//                    Toast.makeText(getApplicationContext(), "Extraction cancelled", Toast.LENGTH_SHORT).show();
+//                }
+//                dialog.dismiss();
+//            });
+//            AlertDialog dialog = builder.create();
+//            dialog.show();
+//
+//            handler.post(() -> {
+//                try {
+//                    ArrayList<String> text = future.get();
+//                    dialog.dismiss();
+//
+//                    if (text.isEmpty()) {
+//                        Toast.makeText(getApplicationContext(), "No text found", Toast.LENGTH_SHORT).show();
+//                    } else {
+//                        for (String s : text) {
+//                            textToSpeech.speak(s, TextToSpeech.QUEUE_ADD, null, null);
+//                        }
+//                        Toast.makeText(getApplicationContext(), "Started speaking", Toast.LENGTH_SHORT).show();
+//                    }
+//                } catch (InterruptedException e) {
+//                    Thread.currentThread().interrupt();
+//                } catch (ExecutionException e) {
+//                    Log.e("PDFErr", "ReaderActivity onCreate: ", e);
+//                    Toast.makeText(getApplicationContext(), "Error occurred during text extraction", Toast.LENGTH_SHORT).show();
+//                }
+//            });
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Please wait");
+            builder.setMessage("Extracting text from PDF...");
+            ProgressBar progressBar = new ProgressBar(this);
+            progressBar.setIndeterminate(true);
+            progressBar.setPadding(0, 0, 0, 30);
+            builder.setView(progressBar);
+            builder.setCancelable(false);
+            AlertDialog dialog = builder.create();
+            dialog.show();
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            Handler handler = new Handler(Looper.getMainLooper());
+            executor.execute(() -> {
+                ArrayList<String> text = extractTextFromPDF();
+                handler.post(() -> {
+                    dialog.dismiss();
+                    if (text.isEmpty()) {
+                        Toast.makeText(getApplicationContext(), "No text found", Toast.LENGTH_SHORT).show();
+                    } else {
+                        for (String s : text) {
+                            textToSpeech.speak(s, TextToSpeech.QUEUE_ADD, null, null);
+                        }
+                        Toast.makeText(getApplicationContext(), "Started speaking", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            });
         });
 
         loadPdf(location);
@@ -180,7 +252,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             return;
         }
         pdfFile.setCurrPage(nowPage);
-        //BrowserActivity.getPdfFileAdapter().updatePDFFileAt(recyclerPosition, pdfFile);
         BrowserActivity.getPdfFiles().set(recyclerPosition, pdfFile);
         Intent intent = new Intent("com.taut0logy.readerforu.PDF_FILE_UPDATED");
         intent.putExtra("position", recyclerPosition);
@@ -207,7 +278,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             return;
         }
         pdfFile.setCurrPage(nowPage);
-        //BrowserActivity.getPdfFileAdapter().updatePDFFileAt(recyclerPosition, pdfFile);
         BrowserActivity.getPdfFiles().set(recyclerPosition, pdfFile);
         Intent intent = new Intent("com.taut0logy.readerforu.PDF_FILE_UPDATED");
         intent.putExtra("position", recyclerPosition);
@@ -228,7 +298,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     }
 
     private void loadPreferences() {
-        //BrowserActivity.getPdfFileAdapter().updatePDFFileAt(recyclerPosition, pdfFile);
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         isNight = sharedPreferences.getBoolean("isNight", false);
         nowPage = sharedPreferences.getInt(pdfFile.getLocation() + "nowPage", 0);
@@ -337,7 +406,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         configurator.defaultPage(Math.max(0, nowPage - 1));
         configurePdfView(configurator);
         configurator.load();
-        //open pdfdocument with password\
+        //open pdfdocument with password
         Log.e("PDFErr", "loadPdfWithPassword: success");
         byte[] bytes = password.getBytes();
         PdfDocument pdfDocument = new PdfDocument(new com.itextpdf.kernel.pdf.PdfReader(location, new ReaderProperties().setPassword(bytes)));
@@ -358,7 +427,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
 
     @Override
     public void onJumpToPage(int pageNumber) {
-        // Handle jumping to the specified page here
         pdfView.jumpTo(pageNumber - 1);
     }
 
@@ -384,19 +452,25 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         bottomBar.animate().translationY(bottomBar.getHeight() + 100).setDuration(300).start();
     }
 
-    String extractTextFromPDF() {
+    ArrayList<String> extractTextFromPDF() {
         try {
-            StringBuilder text = new StringBuilder();
+            ArrayList<String> text = new ArrayList<>();
             PdfDocument pdfDocument = new PdfDocument(new PdfReader(pdfFile.getLocation()));
             for (int i = nowPage; i <= pdfDocument.getNumberOfPages(); i++) {
-                text.append(pdfDocument.getPage(i).getPdfObject().toString());
+//                if(Thread.currentThread().isInterrupted()) {
+//                    Log.d("PDFErr", "extractTextFromPage: Thread interrupted");
+//                    return new ArrayList<>();
+//                }
+                String extractedText = PdfTextExtractor.getTextFromPage(pdfDocument.getPage(i), new com.itextpdf.kernel.pdf.canvas.parser.listener.LocationTextExtractionStrategy());
+                if(extractedText != null && !extractedText.isEmpty())
+                    text.add(extractedText);
             }
             pdfDocument.close();
-            Log.d("PDFErr", "extractTextFromPage: " + text.toString());
-            return text.toString();
+            //Log.d("PDFErr", "extractTextFromPage: " + text.toString());
+            return text;
         } catch (IOException e) {
             Log.e("PDFErr", "extractTextFromPage: ", e);
-            return "";
+            return new ArrayList<>();
         }
     }
 }

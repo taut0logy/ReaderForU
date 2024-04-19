@@ -127,12 +127,10 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
                                 java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                     } catch (IOException e) {
                         Log.e("PDFErr", "onBindViewHolder: ", e);
-                        e.printStackTrace();
                     }
                 }).start();
             } catch (Exception e) {
                 Log.e("PDFErr", "onBindViewHolder: " + e.getClass().getName(), e);
-                e.printStackTrace();
             }
             int position1 = BrowserActivity.getPdfFiles().indexOf(pdfFile);
             SharedPreferences sharedPreferences = context.getSharedPreferences("reader", Context.MODE_PRIVATE);
@@ -143,7 +141,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
                 editor.putString(PDF_CACHE_KEY, jsonArray.toString());
                 editor.apply();
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("PDFErr", "onBindViewHolder: ", e);
             }
             pdfFiles.set(position1, pdfFile);
             notifyItemChanged(position);

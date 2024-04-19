@@ -20,6 +20,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.ProgressBar;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
@@ -99,6 +100,10 @@ public class BrowserActivity extends AppCompatActivity {
                         builder2.setMessage(
                                 "This may take a while...\n" +
                                         "Please do not close the app...");
+                        ProgressBar progressBar = new ProgressBar(this);
+                        progressBar.setIndeterminate(true);
+                        progressBar.setPadding(0, 0, 0, 30);
+                        builder2.setView(progressBar);
                         builder2.setCancelable(false);
                         AlertDialog alertDialog2 = builder2.create();
                         alertDialog2.show();
@@ -143,7 +148,10 @@ public class BrowserActivity extends AppCompatActivity {
                 loadPDFFiles();
             }
             runOnUiThread(() -> {
-                statusText.setVisibility(TextView.GONE);
+                if(pdfFiles.isEmpty())
+                    statusText.setText(R.string.no_pdf_files_found);
+                else
+                    statusText.setVisibility(TextView.GONE);
                 pdfFileAdapter.notifyDataSetChanged();
             });
         }).start();
