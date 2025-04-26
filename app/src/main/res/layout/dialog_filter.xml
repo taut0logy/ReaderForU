@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="300dp"
     android:layout_height="wrap_content"
-    android:background="@color/material_dark"
+    android:background="?attr/colorSurface"
     android:orientation="vertical"
     android:padding="16dp">
     >
@@ -17,7 +17,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:text="Filter Options:"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="20sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -29,7 +29,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Favourites First"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/textViewFilterOptions">
@@ -42,7 +42,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:text="Sort Options: "
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="20sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -62,28 +62,28 @@
             android:id="@+id/radioButtonTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/dark_grey"
+            android:textColor="?attr/colorOnSurface"
             android:text="Title" />
 
         <RadioButton
             android:id="@+id/radioButtonAuthor"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/dark_grey"
+            android:textColor="?attr/colorOnSurface"
             android:text="Author" />
 
         <RadioButton
             android:id="@+id/radioButtonModified"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/dark_grey"
+            android:textColor="?attr/colorOnSurface"
             android:text="Modified" />
 
         <RadioButton
             android:id="@+id/radioButtonLastRead"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/dark_grey"
+            android:textColor="?attr/colorOnSurface"
             android:text="Last Read" />
     </RadioGroup>
 
@@ -103,14 +103,14 @@
             android:id="@+id/radioButtonAscending"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/dark_grey"
+            android:textColor="?attr/colorOnSurface"
             android:text="Ascending" />
 
         <RadioButton
             android:id="@+id/radioButtonDescending"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/dark_grey"
+            android:textColor="?attr/colorOnSurface"
             android:text="Descending" />
     </RadioGroup>
 
@@ -139,7 +139,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="20sp"
         android:textStyle="bold"
         android:text="Sort Order: "

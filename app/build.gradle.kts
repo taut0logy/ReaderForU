@@ -28,6 +28,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
 }
 
 dependencies {
@@ -36,7 +37,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     //implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("com.itextpdf:itext7-core:7.1.15")
-    implementation("com.github.barteksc:android-pdf-viewer:3.2.0-beta.1")
+    implementation("com.github.mhiew:android-pdf-viewer:3.2.0-beta.3")
     //implementation("com.github.bumptech.glide:glide:4.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     testImplementation("junit:junit:4.13.2")

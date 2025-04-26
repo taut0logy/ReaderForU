@@ -12,6 +12,26 @@
         android:icon="@drawable/baseline_sort_24"
         android:title="@string/sort"
         app:showAsAction="always" />
+    
+        <item
+        android:id="@+id/action_theme"
+        android:title="@string/menu_theme"
+        android:icon="@drawable/baseline_brightness_6_24"
+        app:showAsAction="always">
+        <menu>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/theme_light"
+                    android:title="@string/theme_light" />
+                <item
+                    android:id="@+id/theme_dark"
+                    android:title="@string/theme_dark" />
+                <item
+                    android:id="@+id/theme_system"
+                    android:title="@string/theme_system" />
+            </group>
+        </menu>
+    </item>
     <item
         android:id="@+id/action_refresh"
         android:icon="@drawable/baseline_refresh_24"
@@ -28,4 +48,6 @@
         android:title="@string/exit"
         app:showAsAction="ifRoom" />
 
+
+    
 </menu>

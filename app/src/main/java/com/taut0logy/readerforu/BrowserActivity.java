@@ -10,6 +10,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
@@ -27,8 +28,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.github.barteksc.pdfviewer.BuildConfig;
@@ -68,9 +71,34 @@ public class BrowserActivity extends AppCompatActivity {
         return filteredPdfFiles;
     }
 
+    private void applyTheme() {
+        sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
+        String theme = sharedPreferences.getString("theme", "system"); // Default to system
+        switch (theme) {
+            case "light":
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+                break;
+            case "dark":
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+                break;
+            default: // "system"
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+                break;
+        }
+    }
+
+    private void saveAndApplyTheme(String theme) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("theme", theme);
+        editor.apply();
+        applyTheme(); // Apply immediately
+        recreate(); // Recreate activity to apply theme fully
+    }
+
     @SuppressLint("NotifyDataSetChanged")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        applyTheme(); // Apply theme before super.onCreate
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_browser);
         toolbar = findViewById(R.id.browser_toolbar);
@@ -86,8 +114,20 @@ public class BrowserActivity extends AppCompatActivity {
         sortDirection = sharedPreferences.getInt("sortDirection", 1);
         toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
+                if(id == R.id.theme_light) {
+                    saveAndApplyTheme("light");
+                    return true;
+                }
+                if(id == R.id.theme_dark) {
+                    saveAndApplyTheme("dark");
+                    return true;
+                }
+                if(id == R.id.theme_system) {
+                    saveAndApplyTheme("system");
+                    return true;
+                }
                 if(id == R.id.action_search) {
-
+                    // Handled by SearchView listener in onCreateOptionsMenu
                     return true;
                 }
                 if(id == R.id.action_refresh) {
@@ -268,7 +308,11 @@ public class BrowserActivity extends AppCompatActivity {
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction("com.taut0logy.readerforu.PDF_FILE_UPDATED");
         //intentFilter.addAction("com.taut0logy.readerforu.PDF_FILE_DELETED");
-        registerReceiver(pdfFileUpdatedReceiver, intentFilter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(pdfFileUpdatedReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(pdfFileUpdatedReceiver, intentFilter);
+        }
         super.onStart();
     }
 
@@ -293,6 +337,8 @@ public class BrowserActivity extends AppCompatActivity {
             }
         }
     };
+
+
 
     private boolean isPdfCacheAvailable() {
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
@@ -440,6 +486,7 @@ public class BrowserActivity extends AppCompatActivity {
             }
         }
     }
+
     public static void showAboutDialog(Context context) {
         AlertDialog.Builder builder = getBuilder(context);
         builder.setNegativeButton("Facebook", (dialog, which) -> {
@@ -509,4 +556,33 @@ public class BrowserActivity extends AppCompatActivity {
                 return 0;
         }
     }
+
 }
+
+/*
+ *  Caused by: java.lang.UnsupportedOperationException: Failed to resolve attribute at index 13: TypedValue{t=0x2/d=0x7f030124 a=-1}, theme={InheritanceMap=[id=0x7f130272com.taut0logy.readerforu:style/Theme.ReaderForU,
+ *  id=0x7f130078com.taut0logy.readerforu:style/Base.Theme.ReaderForU,
+ *  id=0x7f130255com.taut0logy.readerforu:style/Theme.MaterialComponents.DayNight.NoActionBar,
+ *  id=0x7f13026ecom.taut0logy.readerforu:style/Theme.MaterialComponents.Light.NoActionBar,
+ *  id=0x7f130260com.taut0logy.readerforu:style/Theme.MaterialComponents.Light,
+ *  id=0x7f13006ecom.taut0logy.readerforu:style/Base.Theme.MaterialComponents.Light,
+ *  id=0x7f1300a8com.taut0logy.readerforu:style/Base.V21.Theme.MaterialComponents.Light,
+ *  id=0x7f130096com.taut0logy.readerforu:style/Base.V14.Theme.MaterialComponents.Light,
+ *  id=0x7f130097com.taut0logy.readerforu:style/Base.V14.Theme.MaterialComponents.Light.Bridge,
+ *  id=0x7f13013bcom.taut0logy.readerforu:style/Platform.MaterialComponents.Light,
+ *  id=0x7f13021acom.taut0logy.readerforu:style/Theme.AppCompat.Light,
+ *  id=0x7f130052com.taut0logy.readerforu:style/Base.Theme.AppCompat.Light,
+ *  id=0x7f1300bacom.taut0logy.readerforu:style/Base.V28.Theme.AppCompat.Light,
+ *  id=0x7f1300b7com.taut0logy.readerforu:style/Base.V26.Theme.AppCompat.Light,
+ *  id=0x7f1300b1com.taut0logy.readerforu:style/Base.V23.Theme.AppCompat.Light, 
+ * id=0x7f1300afcom.taut0logy.readerforu:style/Base.V22.Theme.AppCompat.Light, 
+ * id=0x7f1300a4com.taut0logy.readerforu:style/Base.V21.Theme.AppCompat.Light, 
+ * id=0x7f1300bdcom.taut0logy.readerforu:style/Base.V7.Theme.AppCompat.Light, 
+ * id=0x7f130138com.taut0logy.readerforu:style/Platform.AppCompat.Light, 
+ * id=0x7f130143com.taut0logy.readerforu:style/Platform.V25.AppCompat.Light, 
+ * id=0x1030241android:style/Theme.Material.Light.NoActionBar, 
+ * id=0x1030237android:style/Theme.Material.Light, 
+ * id=0x103000candroid:style/Theme.Light, 
+ * id=0x1030005android:style/Theme], Themes=[com.taut0logy.readerforu:style/Theme.ReaderForU, forced, com.taut0logy.readerforu:style/Theme.AppCompat.Empty, forced, android:style/Theme.DeviceDefault.Light.DarkActionBar, forced]}
+                                                                                                    	at android.content.res.TypedArray.getDrawableForDensity(TypedArray.java:1007)
+ */

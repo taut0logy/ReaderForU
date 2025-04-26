@@ -41,4 +41,10 @@
     <string name="share_current_file">Share current file</string>
     <string name="read_the_current_page_aloud">Read the current page aloud</string>
     <string name="no_pdf_files_found">No PDF Files found</string>
+
+    <!-- Theme Strings -->
+    <string name="menu_theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System Default</string>
 </resources>

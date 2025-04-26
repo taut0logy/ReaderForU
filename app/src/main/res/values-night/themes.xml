@@ -1,16 +1,29 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.ReaderForU" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/black</item>
-        <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="colorSecondaryVariant">@color/teal_200</item>
-        <item name="colorOnSecondary">@color/black</item>
+    <style name="Theme.ReaderForU" parent="Base.Theme.ReaderForU"> <!-- Inherit from Base theme to get NoActionBar -->
+        <!-- Updated Dark Theme Attributes with Blue-Black Palette -->
+        <item name="colorPrimary">@color/blue_primary_dark</item>
+        <item name="colorPrimaryVariant">@color/blue_primary_variant_dark</item>
+        <item name="colorOnPrimary">@color/text_on_primary_dark</item> <!-- Use defined text color -->
+        <item name="colorSecondary">@color/blue_secondary_dark</item>
+        <item name="colorSecondaryVariant">@color/blue_secondary_variant_dark</item>
+        <item name="colorOnSecondary">@color/text_on_secondary_dark</item> <!-- Use defined text color -->
+        <item name="android:colorBackground">@color/background_dark</item> <!-- Use defined background -->
+        <item name="colorSurface">@color/surface_dark</item> <!-- Use defined surface -->
+        <item name="colorError">@color/dark_error</item> <!-- Keep existing error color -->
+        <item name="colorOnBackground">@color/text_primary_dark</item>
+        <item name="colorOnSurface">@color/text_primary_dark</item>
+        <item name="colorOnError">@color/black</item> <!-- Keep existing text on error -->
+        <!-- Custom Text & Background Attributes -->
+        <item name="textColorPrimary">@color/text_primary_dark</item>
+        <item name="textColorSecondary">@color/text_secondary_dark</item>
+        <item name="bookViewBackgroundColor">@color/book_view_background_dark</item> <!-- Use defined book view background -->
+        <item name="colorOnSurfaceVariant">@color/material_on_surface_variant</item> <!-- Keep existing -->
+        <item name="colorSurfaceContainerHighest">@color/material_dark_grey</item> <!-- Keep existing -->
         <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item> <!-- Ensure status bar uses primary variant -->
+        <!-- Window background -->
+        <item name="android:windowBackground">?attr/colorSurface</item> <!-- Ensure window background uses surface -->
         <!-- Customize your theme here. -->
     </style>
 </resources>
