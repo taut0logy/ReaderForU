@@ -1,84 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Existing Colors -->
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-        <color name="transparent">#00000000</color>
-        <color name="material_dark">#FF212121</color>
-        <color name="material_dark_grey">#FF424242</color>
-        <color name="light_yellow">#FFFFF59D</color>
-        <color name="light_green">#FF81C784</color>
-        <color name="light_blue">#FF90CAF9</color>
-        <color name="light_red">#FFFF8A80</color>
-        <color name="light_purple">#FFB39DDB</color>
-        <color name="light_orange">#FFFFCC80</color>
-        <color name="light_pink">#FFFF80AB</color>
-        <color name="light_brown">#FFBCAAA4</color>
-        <color name="light_grey">#FFEEEEEE</color>
-        <color name="dark_yellow">#FFFFE082</color>
-        <color name="dark_green">#FF66BB6A</color>
-        <color name="dark_blue">#FF64B5F6</color>
-        <color name="indigo">#FF7986CB</color>
-        <color name="dark_indigo">#FF3F51B5</color>
-        <color name="dark_red">#FFFF5252</color>
-        <color name="dark_purple">#FF9575CD</color>
-        <color name="dark_orange">#FFFFAB40</color>
-        <color name="dark_pink">#FFFF4081</color>
-
-    <!-- Updated Blue Shades (Light Theme) -->
-    <color name="blue_primary_light">#2196F3</color> <!-- Material Blue 500 -->
-    <color name="blue_primary_variant_light">#1976D2</color> <!-- Material Blue 700 -->
-    <color name="blue_secondary_light">#64B5F6</color> <!-- Material Blue 300 -->
-    <color name="blue_secondary_variant_light">#90CAF9</color> <!-- Material Blue 200 -->
-
-    <!-- Text Colors (Light Theme) -->
-    <color name="text_primary_light">#DE000000</color> <!-- 87% Black -->
-    <color name="text_secondary_light">#8A000000</color> <!-- 54% Black -->
-    <color name="text_on_primary_light">#FFFFFF</color> <!-- White text on primary blue -->
-    <color name="text_on_secondary_light">#000000</color> <!-- Black text on secondary blue -->
-
-    <!-- Book View Background (Light Theme) -->
-    <color name="book_view_background_light">#E3F2FD</color> <!-- Material Blue 50 -->
-    <color name="background_light">#FFFFFF</color> <!-- White -->
-    <color name="surface_light">#FFFFFF</color> <!-- White -->
-        <color name="dark_brown">#FF8D6E63</color>
-        <color name="dark_grey">#FFBDBDBD</color>
-        <color name="light_black">#FF424242</color>
-        <color name="light_white">#FFFAFAFA</color>
-        <color name="light_cyan">#FF80DEEA</color>
-        <color name="dark_cyan">#FF26C6DA</color>
-        <color name="light_indigo">#FF9FA8DA</color>
-        
-        
-        
-
-    <!-- Light Theme Colors -->
-    <color name="light_primary">#6200EE</color>
-    <color name="light_primaryVariant">#3700B3</color>
-    <color name="light_secondary">#03DAC6</color>
-    <color name="light_secondaryVariant">#018786</color>
-    <color name="light_background">#FFFFFF</color>
-    <color name="light_surface">#FFFFFF</color>
-    <color name="light_error">#B00020</color>
-    <color name="light_onPrimary">#FFFFFF</color>
-    <color name="light_onSecondary">#000000</color>
-    <color name="light_onBackground">#000000</color>
-    <color name="light_onSurface">#000000</color>
-    <color name="light_onError">#FFFFFF</color>
-    <color name="dark_primaryVariant">#3700B3</color> <!-- Often same as light -->
-    <color name="dark_secondary">#03DAC6</color> <!-- Often same as light -->
-    <color name="dark_secondaryVariant">#03DAC6</color> <!-- Often same as light -->
-    <color name="dark_background">#121212</color>
-    <color name="dark_surface">#121212</color> <!-- Can be slightly lighter -->
-    <color name="dark_error">#CF6679</color>
-    <color name="dark_onPrimary">#000000</color>
-    <color name="dark_onSecondary">#000000</color>
-    <color name="dark_onBackground">#FFFFFF</color>
-    <color name="dark_onSurface">#FFFFFF</color>
-    <color name="dark_onError">#000000</color>
+    <!-- Core palette colors -->
+    <color name="primary_blue_light">#1976D2</color>
+    <color name="primary_blue_dark">#0D47A1</color>
+    <color name="primary_variant_light">#1565C0</color>
+    <color name="primary_variant_dark">#002171</color>
+    <color name="secondary_blue_light">#42A5F5</color>
+    <color name="secondary_blue_dark">#2979FF</color>
+    <color name="secondary_variant_light">#64B5F6</color>
+    <color name="secondary_variant_dark">#0D47A1</color>
+    
+    <!-- Colors needed for SwipeRefreshLayout -->
+    <color name="blue_primary_light">#1976D2</color>
+    <color name="blue_secondary_light">#42A5F5</color>
+    
+    <!-- Background and surface colors -->
+    <color name="background_light">#F5F7FA</color>
+    <color name="background_dark">#121212</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="book_view_background_light">#EEF2F7</color>
+    <color name="book_view_background_dark">#EEF2F7</color>
+    <color name="card_background_light">#FFFFFF</color>
+    <color name="card_background_dark">#2C2C2C</color>
+    
+    <!-- Text colors -->
+    <color name="text_primary_light">#212121</color>
+    <color name="text_primary_dark">#E0E0E0</color>
+    <color name="text_secondary_light">#757575</color>
+    <color name="text_secondary_dark">#B0B0B0</color>
+    <color name="text_on_primary_light">#FFFFFF</color>
+    <color name="text_on_primary_dark">#FFFFFF</color>
+    <color name="text_on_secondary_light">#000000</color>
+    <color name="text_on_secondary_dark">#000000</color>
+    
+    <!-- Status indicators -->
+    <color name="error_red">#B71C1C</color>
+    <color name="success_green">#2E7D32</color>
+    <color name="warning_amber">#FF8F00</color>
+    
+    <!-- Static colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+    
+    <!-- Material utility colors -->
+    <color name="material_on_surface_variant">#757575</color>
+    <color name="material_grey">#E0E0E0</color>
+    <color name="material_dark_grey">#424242</color>
+    <color name="light_grey">#F5F5F5</color>
+    <color name="medium_grey">#9E9E9E</color>
+    <color name="dark_grey">#616161</color>
+    
+    <!-- PDF reader specific colors -->
+    <color name="pdf_highlight">#FFEB3B</color>
+    <color name="pdf_underline">#42A5F5</color>
+    <color name="pdf_strikethrough">#EF5350</color>
+    <color name="pdf_link">#2979FF</color>
+    
+    <!-- Additional custom attributes -->
+    <color name="toolbar_icon_tint_light">#212121</color>
+    <color name="toolbar_icon_tint_dark">#E0E0E0</color>
+    <color name="divider_light">#E0E0E0</color>
+    <color name="divider_dark">#424242</color>
+    <color name="ripple_light">#1F000000</color>
+    <color name="ripple_dark">#33FFFFFF</color>
 </resources>

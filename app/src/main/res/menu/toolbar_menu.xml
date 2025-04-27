@@ -37,11 +37,34 @@
         android:icon="@drawable/baseline_refresh_24"
         android:title="@string/refresh"
         app:showAsAction="ifRoom" />
+
+
+    <item android:id="@+id/action_select_folders"
+        android:title="@string/add_pdf_folder"
+        app:showAsAction="never" />
+
+    <item android:id="@+id/action_manage_folders"
+        android:title="@string/manage_folders"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_clear_thumbnails"
+        android:icon="@drawable/baseline_delete_24"
+        android:title="@string/clear_thumbnails"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_rebuild_thumbnails"
+        android:icon="@drawable/baseline_refresh_24"
+        android:title="@string/rebuild_thumbnails"
+        app:showAsAction="never" />
+
     <item
         android:id="@+id/action_about"
         android:icon="@drawable/baseline_info_24"
         android:title="@string/about"
         app:showAsAction="never" />
+
     <item
         android:id="@+id/action_exit"
         android:icon="@drawable/baseline_exit_to_app_24"

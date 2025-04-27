@@ -73,7 +73,7 @@
         android:ellipsize="end"
         android:maxLines="3"
         android:text="author"
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textColor="?attr/colorPrimary"
         android:textSize="18sp"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"

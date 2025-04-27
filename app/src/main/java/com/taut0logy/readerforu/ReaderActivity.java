@@ -2,12 +2,16 @@ package com.taut0logy.readerforu;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.SQLException;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -24,25 +28,21 @@ import androidx.core.content.FileProvider;
 import com.github.barteksc.pdfviewer.PDFView;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
+import com.itextpdf.kernel.pdf.PdfPage;
 import com.itextpdf.kernel.pdf.PdfReader;
-import com.itextpdf.kernel.pdf.ReaderProperties;
 import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.taut0logy.readerforu.data.PDFFile;
+import com.taut0logy.readerforu.data.PDFRepository;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Locale;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ReaderActivity extends AppCompatActivity implements JumpToPageFragment.JumpToPageListener {
-    private static final String PDF_CACHE_KEY = "pdf_cache";
+    private static final String TAG = "ReaderActivity";
     private PDFFile pdfFile;
     private TextToSpeech textToSpeech;
     private TextView etCurrPage;
@@ -54,6 +54,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     private boolean isNight = false;
     private int nowPage = 0;
     private SharedPreferences sharedPreferences;
+    private PDFRepository pdfRepository; // Database repository
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,42 +74,20 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         sharebtn = findViewById(R.id.sharebtn);
         speechbtn = findViewById(R.id.speechbtn);
         showDialog = findViewById(R.id.showDialog);
-
-
-        Intent intent = getIntent();
-        if(Intent.ACTION_VIEW.equals(intent.getAction())) {
-            //String path = Objects.requireNonNull(intent.getData()).getPath();
-            try {
-                Uri uri = intent.getData();
-                if(uri == null) {
-                    Toast.makeText(this, "Invalid file", Toast.LENGTH_SHORT).show();
-                    Intent intent2 = new Intent(this, BrowserActivity.class);
-                    startActivity(intent2);
-                    finish();
-                    return;
-                }
-                String path = uri.getPath();
-                assert path != null;
-                PdfReader reader = new PdfReader(path);
-                PdfDocument pdfDocument = new PdfDocument(reader);
-                int pages = pdfDocument.getNumberOfPages();
-                String title = pdfDocument.getDocumentInfo().getTitle();
-                String author = pdfDocument.getDocumentInfo().getAuthor();
-                if(author == null || author.isEmpty() || author.equals("null"))
-                    author = "Unknown";
-                String description = pdfDocument.getDocumentInfo().getSubject();
-                if(description == null || description.isEmpty() || description.equals("null"))
-                    description = "No description";
-                boolean isFav = pdfDocument.getDocumentInfo().getMoreInfo("favourite")!= null && pdfDocument.getDocumentInfo().getMoreInfo("favourite").equals("true");
-                pdfDocument.close();
-                pdfFile = new PDFFile(title, author, description, path, null, 0, pages, isFav, System.currentTimeMillis(), System.currentTimeMillis());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else {
-            recyclerPosition = intent.getIntExtra("position", 0);
-            pdfFile = BrowserActivity.getPdfFiles().get(recyclerPosition);
+        
+        // Initialize database repository
+        pdfRepository = new PDFRepository(this);
+        try {
+            pdfRepository.open();
+        } catch (SQLException e) {
+            Log.e(TAG, "Error opening database", e);
+            Toast.makeText(this, "Error accessing database", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
+
+        // Handle intent data
+        handleIntent(getIntent());
 
         if(pdfFile == null) {
             Toast.makeText(this, "Invalid file", Toast.LENGTH_SHORT).show();
@@ -117,7 +96,19 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             finish();
             return;
         }
+        
+        // Update last read time
         pdfFile.setLastRead(System.currentTimeMillis());
+        
+        // Save the updated last read time to database
+        if (pdfRepository != null) {
+            try {
+                pdfRepository.updateLastReadTime(pdfFile.getLocation(), System.currentTimeMillis());
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating last read time", e);
+            }
+        }
+        
         loadPreferences();
 
         textToSpeech = new TextToSpeech(this, status -> {
@@ -126,16 +117,13 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
                 textToSpeech.setSpeechRate(0.8f);
             }
         }, "com.google.android.tts");
-//        textToSpeech = new TextToSpeech(this, status -> {
-//            if (status != TextToSpeech.ERROR) {
-//                textToSpeech.setLanguage(Locale.US);
-//            }
-//        });
 
         tvBookName.setText(pdfFile.getName());
         tvAuthorName.setText(pdfFile.getAuthor());
         tvTotalPages.setText(String.valueOf(pdfFile.getTotalPages()));
-        String location = pdfFile.getLocation();
+        
+        // Load the PDF
+        loadPdf(pdfFile.getLocation());
 
         toggleDark.setOnClickListener(v -> {
             if (isNight) {
@@ -157,22 +145,12 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         infoBtn.setOnClickListener(v -> {
             Intent intent3 = new Intent(ReaderActivity.this, InfoActivity.class);
             intent3.putExtra("position", recyclerPosition);
+            intent3.putExtra("file_location", pdfFile.getLocation());
             startActivity(intent3);
         });
 
         sharebtn.setOnClickListener(v -> {
-//            if(pdfFile.getImagePath().equals("__protected")) {
-//                Toast.makeText(this, "This file is protected", Toast.LENGTH_SHORT).show();
-//                return;
-//            }
-            File pdfFile = new File(location);
-            Uri pdfUri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".provider", pdfFile);
-            Intent shareIntent = new Intent();
-            shareIntent.setAction(Intent.ACTION_SEND);
-            shareIntent.putExtra(Intent.EXTRA_STREAM, pdfUri);
-            shareIntent.setType("application/pdf");
-            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(shareIntent, "Share PDF Via"));
+            sharePdf();
         });
 
         speechbtn.setOnClickListener(v -> {
@@ -181,45 +159,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
                 Toast.makeText(this, "Stopped speaking", Toast.LENGTH_SHORT).show();
                 return;
             }
-//            ExecutorService executor = Executors.newSingleThreadExecutor();
-//            Handler handler = new Handler(Looper.getMainLooper());
-//
-//            Future<ArrayList<String>> future = executor.submit(this::extractTextFromPDF);
-//
-//            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-//            builder.setTitle("Please wait");
-//            builder.setMessage("Extracting text from PDF...");
-//            builder.setCancelable(false);
-//            builder.setNegativeButton("Cancel", (dialog, which) -> {
-//                if (!future.isDone()) {
-//                    future.cancel(true);
-//                    Toast.makeText(getApplicationContext(), "Extraction cancelled", Toast.LENGTH_SHORT).show();
-//                }
-//                dialog.dismiss();
-//            });
-//            AlertDialog dialog = builder.create();
-//            dialog.show();
-//
-//            handler.post(() -> {
-//                try {
-//                    ArrayList<String> text = future.get();
-//                    dialog.dismiss();
-//
-//                    if (text.isEmpty()) {
-//                        Toast.makeText(getApplicationContext(), "No text found", Toast.LENGTH_SHORT).show();
-//                    } else {
-//                        for (String s : text) {
-//                            textToSpeech.speak(s, TextToSpeech.QUEUE_ADD, null, null);
-//                        }
-//                        Toast.makeText(getApplicationContext(), "Started speaking", Toast.LENGTH_SHORT).show();
-//                    }
-//                } catch (InterruptedException e) {
-//                    Thread.currentThread().interrupt();
-//                } catch (ExecutionException e) {
-//                    Log.e("PDFErr", "ReaderActivity onCreate: ", e);
-//                    Toast.makeText(getApplicationContext(), "Error occurred during text extraction", Toast.LENGTH_SHORT).show();
-//                }
-//            });
+
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Please wait");
             builder.setMessage("Extracting text from PDF...");
@@ -247,8 +187,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
                 });
             });
         });
-
-        loadPdf(location);
     }
 
     @Override
@@ -263,17 +201,20 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         intent.putExtra("position", recyclerPosition);
         intent.putExtra("pdfFile", pdfFile);
         sendBroadcast(intent);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        try {
-            JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-            JSONObject jsonObject = jsonArray.getJSONObject(recyclerPosition);
-            jsonObject.put("currPage", nowPage);
-            jsonArray.put(recyclerPosition, jsonObject);
-            editor.putString(PDF_CACHE_KEY, jsonArray.toString());
-        } catch (JSONException ex) {
-            Log.d("PDFErr", "onPause: " + ex.getMessage());
+        
+        // Update database with current page, last read time, and ensure thumbnail path is saved
+        if (pdfRepository != null) {
+            pdfRepository.updateCurrentPage(pdfFile.getLocation(), nowPage, System.currentTimeMillis());
+            
+            // Make sure thumbnail path is saved if it exists
+            if (pdfFile.getImagePath() != null && !pdfFile.getImagePath().isEmpty()) {
+                pdfRepository.updateThumbnailPath(pdfFile.getLocation(), pdfFile.getImagePath());
+                Log.d(TAG, "Updated thumbnail path in database: " + pdfFile.getImagePath());
+            }
+            
+            Log.d(TAG, "Updated current page in database: " + nowPage);
         }
-        editor.apply();
+        
         super.onPause();
     }
 
@@ -287,10 +228,25 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         BrowserActivity.getPdfFiles().set(recyclerPosition, pdfFile);
         Intent intent = new Intent("com.taut0logy.readerforu.PDF_FILE_UPDATED");
         intent.putExtra("position", recyclerPosition);
+        
+        // Save night mode preference
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean("isNight", isNight);
-        editor.putInt(pdfFile.getLocation() + "nowPage", nowPage);
         editor.apply();
+        
+        // Update database with current page and thumbnail path
+        if (pdfRepository != null) {
+            pdfRepository.updateCurrentPage(pdfFile.getLocation(), nowPage, System.currentTimeMillis());
+            
+            // Make sure thumbnail path is saved if it exists
+            if (pdfFile.getImagePath() != null && !pdfFile.getImagePath().isEmpty()) {
+                pdfRepository.updateThumbnailPath(pdfFile.getLocation(), pdfFile.getImagePath());
+                Log.d(TAG, "Updated thumbnail path in database before stopping: " + pdfFile.getImagePath());
+            }
+            
+            pdfRepository.close();
+        }
+        
         super.onStop();
     }
 
@@ -300,76 +256,272 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             textToSpeech.stop();
             textToSpeech.shutdown();
         }
+        // Close database connection
+        if (pdfRepository != null) {
+            pdfRepository.close();
+        }
         super.onDestroy();
     }
 
     private void loadPreferences() {
         sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
         isNight = sharedPreferences.getBoolean("isNight", false);
-        nowPage = sharedPreferences.getInt(pdfFile.getLocation() + "nowPage", 0);
-        Log.d("PDFErr", "loadPreferences: " + nowPage + " " + isNight);
-        if(recyclerPosition == -1) return;
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        new Thread(() -> {
-            editor.putLong(pdfFile.getLocation() + "_lastRead", pdfFile.getLastRead());
-            try {
-                JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-                jsonArray.put(recyclerPosition, pdfFile.toJSON());
-                editor.putString(PDF_CACHE_KEY, jsonArray.toString());
-            } catch (JSONException ex) {
-                ex.printStackTrace();
+        
+        // Get current page and thumbnail from database if available
+        if (pdfRepository != null && pdfFile != null) {
+            PDFFile dbFile = pdfRepository.getPDFFileByPath(pdfFile.getLocation());
+            if (dbFile != null) {
+                nowPage = dbFile.getCurrPage();
+                
+                // Get thumbnail path from database
+                String thumbnailPath = pdfRepository.getThumbnailPath(pdfFile.getLocation());
+                if (thumbnailPath != null && !thumbnailPath.isEmpty()) {
+                    pdfFile.setImagePath(thumbnailPath);
+                    Log.d(TAG, "Loaded thumbnail path from database: " + thumbnailPath);
+                }
+            } else {
+                // Fallback to SharedPreferences if not in database yet
+                nowPage = sharedPreferences.getInt(pdfFile.getLocation() + "nowPage", 0);
             }
-            editor.apply();
-        }).start();
+        } else {
+            nowPage = 0;
+        }
+        
+        Log.d(TAG, "loadPreferences: " + nowPage + " " + isNight);
+        
+        // Update last read time in database
+        if (recyclerPosition != -1 && pdfRepository != null) {
+            new Thread(() -> {
+                pdfRepository.updateLastReadTime(pdfFile.getLocation(), System.currentTimeMillis());
+            }).start();
+        }
     }
+    
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Reopen database connection if needed
+        if (pdfRepository != null) {
+            try {
+                pdfRepository.open();
+            } catch (SQLException e) {
+                Log.e(TAG, "Error reopening database", e);
+            }
+        }
+    }
+
 
     private void loadPdf(String location) {
-        Log.e("PDFErr", "loadPdf: " + location + " " + nowPage);
-        AtomicInteger res= new AtomicInteger(1);
-        File file = new File(location);
-        PDFView.Configurator configurator;
-        configurator = pdfView.fromFile(file).onError(t -> {
-            Log.e("PDFErr", "loadPdf: ", t);
-            if (Objects.requireNonNull(t.getMessage()).contains("password")) {
-                res.set(promptUserForPassword(location));
+        try {
+            Log.d(TAG, "Attempting to load PDF from location: " + location);
+            
+            // Check if this is a content:// URI (SAF)
+            if (location.startsWith("content://")) {
+                Uri uri = Uri.parse(location);
+                Log.d(TAG, "Loading from content URI: " + uri);
+                
+                try {
+                    // Check permissions
+                    int modeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                    getContentResolver().takePersistableUriPermission(uri, modeFlags);
+                } catch (SecurityException e) {
+                    Log.w(TAG, "Could not take persistable permission, continuing anyway", e);
+                    // We'll try to open it even without persistable permissions
+                }
+                
+                // First try direct loading
+                try {
+                    configurePdfView(pdfView.fromUri(uri)
+                        .defaultPage(Math.max(0, nowPage - 1))
+                        .enableSwipe(true)
+                        .swipeHorizontal(false)
+                        .enableDoubletap(true)
+                        .nightMode(isNight)
+                        .spacing(10));
+                    return;
+                } catch (Exception e) {
+                    Log.e(TAG, "Error using URI directly, trying file descriptor method", e);
+                }
+                
+                // If direct loading fails, try through ParcelFileDescriptor
+                try {
+                    ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+                    if (pfd != null) {
+                        // Convert ParcelFileDescriptor to InputStream
+                        FileInputStream fileInputStream = new FileInputStream(pfd.getFileDescriptor());
+                        configurePdfView(pdfView.fromStream(fileInputStream)
+                            .defaultPage(Math.max(0, nowPage - 1))
+                            .enableSwipe(true)
+                            .swipeHorizontal(false)
+                            .enableDoubletap(true)
+                            .nightMode(isNight)
+                            .spacing(10));
+                    } else {
+                        throw new IOException("Failed to open file descriptor");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to load PDF using file descriptor", e);
+                    Toast.makeText(this, "Error accessing file: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    finish();
+                }
             } else {
-                Log.e("PDFErr", "loadPdf: ", t);
+                // Traditional file path
+                File file = new File(location);
+                Log.d(TAG, "Loading from file path: " + file.getAbsolutePath() + ", exists: " + file.exists());
+                
+                if (file.exists()) {
+                    configurePdfView(pdfView.fromFile(file)
+                        .defaultPage(Math.max(0, nowPage - 1))
+                        .enableSwipe(true)
+                        .swipeHorizontal(false)
+                        .enableDoubletap(true)
+                        .nightMode(isNight)
+                        .spacing(10));
+                } else {
+                    Toast.makeText(this, "File not found: " + location, Toast.LENGTH_LONG).show();
+                    Log.e(TAG, "File does not exist: " + location);
+                    finish();
+                }
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Error loading PDF: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Log.e(TAG, "Error loading PDF: " + e.getMessage(), e);
+            finish();
+        }
+    }
+    
+    private void loadPdfFromUri(Uri uri) {
+        try {
+            Log.d(TAG, "Loading PDF directly from URI: " + uri);
+            configurePdfView(pdfView.fromUri(uri)
+                .defaultPage(Math.max(0, nowPage - 1))
+                .enableSwipe(true)
+                .swipeHorizontal(false)
+                .enableDoubletap(true)
+                .nightMode(isNight)
+                .spacing(10));
+        } catch (Exception e) {
+            try {
+                Log.e(TAG, "Error with direct URI load, trying file descriptor: " + e.getMessage(), e);
+                ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+                if (pfd != null) {
+                    // Convert ParcelFileDescriptor to InputStream
+                    FileInputStream fileInputStream = new FileInputStream(pfd.getFileDescriptor());
+                    configurePdfView(pdfView.fromStream(fileInputStream)
+                        .defaultPage(Math.max(0, nowPage - 1))
+                        .enableSwipe(true)
+                        .swipeHorizontal(false)
+                        .enableDoubletap(true)
+                        .nightMode(isNight)
+                        .spacing(10));
+                } else {
+                    Toast.makeText(this, "Cannot access file", Toast.LENGTH_LONG).show();
+                    finish();
+                }
+            } catch (Exception ex) {
+                Toast.makeText(this, "Error loading PDF: " + ex.getMessage(), Toast.LENGTH_LONG).show();
+                Log.e(TAG, "Error loading PDF from file descriptor: " + ex.getMessage(), ex);
                 finish();
             }
-        });
-        if(res.get() == 0) return;
-        configurator.defaultPage(Math.max(0, nowPage - 1));
-        configurator.load();
-        configurePdfView(configurator);
-        pdfView.setNightMode(isNight);
-        pdfView.loadPages();
+        }
     }
-
-    private void configurePdfView(PDFView.Configurator configurator) {
-
-        configurator.scrollHandle(new com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle(this));
-        configurator.onPageChange((page, pageCount) -> {
-            etCurrPage.setText(String.valueOf(page + 1));
-            nowPage = page + 1;
-        });
-        configurator.onPageScroll((page, positionOffset) -> {
-            //get direction of scroll
-            if (positionOffset > 0) {
-                //scrolling down
-                if (barsVisible) {
-                    hideBarsWithAnimation();
-                }
-            } else {
-                //scrolling up
-                if (!barsVisible) {
-                    showBarsWithAnimation();
+    
+    private void loadPdfWithPassword(String location, String password) throws Exception {
+        if (location.startsWith("content://")) {
+            Uri uri = Uri.parse(location);
+            try {
+                configurePdfView(pdfView.fromUri(uri)
+                    .password(password)
+                    .defaultPage(Math.max(0, nowPage - 1))
+                    .enableSwipe(true)
+                    .swipeHorizontal(false)
+                    .enableDoubletap(true)
+                    .nightMode(isNight)
+                    .spacing(10));
+            } catch (Exception e) {
+                // Try with file descriptor if URI method fails
+                ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+                if (pfd != null) {
+                    // Convert ParcelFileDescriptor to InputStream
+                    FileInputStream fileInputStream = new FileInputStream(pfd.getFileDescriptor());
+                    configurePdfView(pdfView.fromStream(fileInputStream)
+                        .password(password)
+                        .defaultPage(Math.max(0, nowPage - 1))
+                        .enableSwipe(true)
+                        .swipeHorizontal(false)
+                        .enableDoubletap(true)
+                        .nightMode(isNight)
+                        .spacing(10));
+                } else {
+                    throw new IOException("Failed to open file descriptor");
                 }
             }
-        });
-        configurator.onTap(e -> {
-            toggleBarsVisibility();
-            return true;
-        });
+        } else {
+            File file = new File(location);
+            configurePdfView(pdfView.fromFile(file)
+                .password(password)
+                .defaultPage(Math.max(0, nowPage - 1))
+                .enableSwipe(true)
+                .swipeHorizontal(false)
+                .enableDoubletap(true)
+                .nightMode(isNight)
+                .spacing(10));
+        }
+    }
+    
+    private void configurePdfView(PDFView.Configurator configurator) {
+        Log.d(TAG, "Configuring PDF view with page: " + (nowPage > 0 ? nowPage - 1 : 0));
+        
+        configurator
+            .onLoad(nbPages -> {
+                Log.d(TAG, "PDF loaded with " + nbPages + " pages");
+                if (pdfFile != null && pdfFile.getTotalPages() != nbPages) {
+                    pdfFile.setTotalPages(nbPages);
+                    // Update in database
+                    if (pdfRepository != null) {
+                        try {
+                            pdfRepository.updateTotalPages(pdfFile.getLocation(), nbPages);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error updating total pages in database", e);
+                        }
+                    }
+                }
+            })
+            .onError(t -> {
+                Log.e(TAG, "Error loading PDF in configurator", t);
+                Toast.makeText(ReaderActivity.this, "Error loading PDF: " + t.getMessage(), Toast.LENGTH_LONG).show();
+            })
+            .onPageError((page, t) -> {
+                Log.e(TAG, "Error loading page " + page, t);
+                Toast.makeText(ReaderActivity.this, "Error loading page " + page, Toast.LENGTH_SHORT).show();
+            })
+            .scrollHandle(new com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle(this))
+            .onPageChange((page, pageCount) -> {
+                etCurrPage.setText(String.valueOf(page + 1));
+                nowPage = page + 1;
+                Log.d(TAG, "Page changed to: " + nowPage);
+            })
+            .onPageScroll((page, positionOffset) -> {
+                // Get direction of scroll
+                if (positionOffset > 0) {
+                    // Scrolling down
+                    if (barsVisible) {
+                        hideBarsWithAnimation();
+                        barsVisible = false;
+                    }
+                } else {
+                    // Scrolling up
+                    if (!barsVisible) {
+                        showBarsWithAnimation();
+                        barsVisible = true;
+                    }
+                }
+            })
+            .onTap(e -> {
+                toggleBarsVisibility();
+                return true;
+            })
+            .load();
     }
 
     private int promptUserForPassword(String location) {
@@ -398,31 +550,6 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         cancelButton.setOnClickListener(v -> finish());
         dialog.show();
         return 0;
-    }
-
-    private void loadPdfWithPassword(String location, String password) throws Exception  {
-        Log.e("PDFErr", "loadPdfWithPassword: " + location + " " + nowPage);
-        File file = new File(location);
-        Intent intent = new Intent(ReaderActivity.this, InfoActivity.class);
-        intent.putExtra("password", password);
-        PDFView.Configurator configurator = pdfView.fromFile(file).password(password).onError(t -> {
-            Log.e("PDFErr", "loadPdfWithPassword: ", t);
-            throw new RuntimeException(t);
-        });
-        configurator.defaultPage(Math.max(0, nowPage - 1));
-        configurePdfView(configurator);
-        configurator.load();
-        //open pdfdocument with password
-        Log.e("PDFErr", "loadPdfWithPassword: success");
-        byte[] bytes = password.getBytes();
-        PdfDocument pdfDocument = new PdfDocument(new com.itextpdf.kernel.pdf.PdfReader(location, new ReaderProperties().setPassword(bytes)));
-        PdfDocumentInfo pdfDocumentInfo = pdfDocument.getDocumentInfo();
-        tvBookName.setText(pdfFile.getName());
-        tvAuthorName.setText((pdfDocumentInfo.getAuthor()!=null && pdfDocumentInfo.getAuthor().isEmpty()) ? "Unknown author" : pdfDocumentInfo.getAuthor());
-        tvTotalPages.setText(String.valueOf(pdfDocument.getNumberOfPages()));
-        pdfDocument.close();
-        //configurator.password(password);
-
     }
 
     private void showJumpToPageDialog(int totalPage, int curPage) {
@@ -459,24 +586,227 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
     }
 
     ArrayList<String> extractTextFromPDF() {
+        ArrayList<String> pages = new ArrayList<>();
+        
         try {
-            ArrayList<String> text = new ArrayList<>();
-            PdfDocument pdfDocument = new PdfDocument(new PdfReader(pdfFile.getLocation()));
-            for (int i = nowPage; i <= pdfDocument.getNumberOfPages(); i++) {
-//                if(Thread.currentThread().isInterrupted()) {
-//                    Log.d("PDFErr", "extractTextFromPage: Thread interrupted");
-//                    return new ArrayList<>();
-//                }
-                String extractedText = PdfTextExtractor.getTextFromPage(pdfDocument.getPage(i), new com.itextpdf.kernel.pdf.canvas.parser.listener.LocationTextExtractionStrategy());
-                if(extractedText != null && !extractedText.isEmpty())
-                    text.add(extractedText);
+            String location = pdfFile.getLocation();
+            PdfReader reader;
+            
+            if (location.startsWith("content://")) {
+                // Handle content URI
+                Uri uri = Uri.parse(location);
+                ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+                if (pfd != null) {
+                    FileInputStream inputStream = new FileInputStream(pfd.getFileDescriptor());
+                    reader = new PdfReader(inputStream);
+                } else {
+                    return pages;
+                }
+            } else {
+                // Handle file path
+                reader = new PdfReader(location);
+            }
+            
+            PdfDocument pdfDocument = new PdfDocument(reader);
+            int pageCount = pdfDocument.getNumberOfPages();
+            
+            for (int i = 1; i <= pageCount; i++) {
+                PdfPage page = pdfDocument.getPage(i);
+                String text = PdfTextExtractor.getTextFromPage(page);
+                pages.add(text);
             }
             pdfDocument.close();
-            //Log.d("PDFErr", "extractTextFromPage: " + text.toString());
-            return text;
-        } catch (IOException e) {
-            Log.e("PDFErr", "extractTextFromPage: ", e);
-            return new ArrayList<>();
+            reader.close();
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting text from PDF: " + e.getMessage(), e);
+        }
+        
+        return pages;
+    }
+    
+    /**
+     * Handle menu item selections
+     */
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.toolbar_menu, menu);
+        return true;
+    }
+    
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        
+        if (id == R.id.action_clear_thumbnails) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Clear Thumbnails");
+            builder.setMessage("This will delete all cached thumbnails. PDF files will not be affected. Continue?");
+            builder.setPositiveButton("Yes", (dialog, which) -> {
+                dialog.dismiss();
+                new Thread(() -> {
+                    int count = com.taut0logy.readerforu.util.ThumbnailUtils.clearThumbnailCache(ReaderActivity.this);
+                    runOnUiThread(() -> {
+                        Toast.makeText(ReaderActivity.this, 
+                            "Cleared " + count + " thumbnails", Toast.LENGTH_SHORT).show();
+                        // Update the current PDF file's thumbnail path
+                        if (pdfFile != null) {
+                            pdfFile.setImagePath(null);
+                            if (pdfRepository != null) {
+                                pdfRepository.updateThumbnailPath(pdfFile.getLocation(), null);
+                            }
+                        }
+                    });
+                }).start();
+            });
+            builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
+            builder.show();
+            return true;
+        } else if (id == R.id.action_about) {
+            // Show about dialog
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("About ReaderForU");
+            builder.setMessage("ReaderForU is a PDF reader application developed for Android.");
+            builder.setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
+            builder.show();
+            return true;
+        } else if (id == R.id.action_exit) {
+            finish();
+            return true;
+        }
+        
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void sharePdf() {
+        String location = pdfFile.getLocation();
+        Uri pdfUri;
+        
+        if (location.startsWith("content://")) {
+            // Content URI - use as is
+            pdfUri = Uri.parse(location);
+        } else {
+            // File path - use FileProvider
+            File pdfFile = new File(location);
+            pdfUri = FileProvider.getUriForFile(this, 
+                    getApplicationContext().getPackageName() + ".provider", pdfFile);
+        }
+        
+        Intent shareIntent = new Intent();
+        shareIntent.setAction(Intent.ACTION_SEND);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, pdfUri);
+        shareIntent.setType("application/pdf");
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(shareIntent, "Share PDF Via"));
+    }
+
+    /**
+     * Handle various intent types, including "Open with" functionality
+     */
+    private void handleIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+        
+        String action = intent.getAction();
+        Uri uri = intent.getData();
+        
+        if (Intent.ACTION_VIEW.equals(action) && uri != null) {
+            // External app is opening the PDF via ACTION_VIEW
+            try {
+                // Take persistable URI permission if possible
+                try {
+                    getContentResolver().takePersistableUriPermission(uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    Log.d(TAG, "Got persistable permission for: " + uri);
+                } catch (SecurityException e) {
+                    Log.w(TAG, "Could not take persistable permission for: " + uri, e);
+                    // We can still try to open the file even without persistable permission
+                }
+                
+                // Check if this file exists in our database
+                PDFFile existingFile = pdfRepository.getPDFFileByPath(uri.toString());
+                
+                if (existingFile != null) {
+                    // We already have this file in our database
+                    pdfFile = existingFile;
+                    recyclerPosition = -1; // Not from recycler view
+                } else {
+                    // This is a new file, create a temporary PDFFile object for it
+                    ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+                    if (pfd == null) {
+                        Toast.makeText(this, "Cannot access file", Toast.LENGTH_SHORT).show();
+                        finish();
+                        return;
+                    }
+                    
+                    try {
+                        // Extract PDF metadata
+                        FileInputStream inputStream = new FileInputStream(pfd.getFileDescriptor());
+                        PdfReader reader = new PdfReader(inputStream);
+                        PdfDocument pdfDocument = new PdfDocument(reader);
+                        
+                        int pages = pdfDocument.getNumberOfPages();
+                        PdfDocumentInfo info = pdfDocument.getDocumentInfo();
+                        
+                        String title = uri.getLastPathSegment();
+                        if (info != null && info.getTitle() != null && !info.getTitle().isEmpty() && !info.getTitle().equals("null")) {
+                            title = info.getTitle();
+                        }
+                        
+                        String author = "Unknown";
+                        if (info != null && info.getAuthor() != null && !info.getAuthor().isEmpty() && !info.getAuthor().equals("null")) {
+                            author = info.getAuthor();
+                        }
+                        
+                        String description = "No description";
+                        if (info != null && info.getSubject() != null && !info.getSubject().isEmpty() && !info.getSubject().equals("null")) {
+                            description = info.getSubject();
+                        }
+                        
+                        pdfDocument.close();
+                        reader.close();
+                        
+                        // Create a temporary PDFFile object
+                        pdfFile = new PDFFile(title, author, description, uri.toString(), null, 
+                                0, pages, false, System.currentTimeMillis(), System.currentTimeMillis());
+                        
+                        // Store this file in the database for future reference
+                        pdfRepository.insertOrUpdatePDFFile(pdfFile);
+                        
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error reading PDF metadata", e);
+                        // Create a basic PDFFile with minimal info
+                        String fileName = uri.getLastPathSegment();
+                        if (fileName == null) fileName = "Unknown PDF";
+                        pdfFile = new PDFFile(fileName, "Unknown", "No description", uri.toString(), 
+                                null, 0, 0, false, System.currentTimeMillis(), System.currentTimeMillis());
+                    } finally {
+                        try {
+                            pfd.close();
+                        } catch (IOException e) {
+                            Log.e(TAG, "Error closing file descriptor", e);
+                        }
+                    }
+                    
+                    recyclerPosition = -1; // Not from recycler view
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error handling external file", e);
+                Toast.makeText(this, "Error opening file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        } else {
+            // Normal internal app usage
+            recyclerPosition = intent.getIntExtra("position", -1);
+            String fileLocation = intent.getStringExtra("file_location");
+            
+            if (recyclerPosition >= 0 && recyclerPosition < BrowserActivity.getPdfFiles().size()) {
+                // Get from BrowserActivity's static list
+                pdfFile = BrowserActivity.getPdfFiles().get(recyclerPosition);
+            } else if (fileLocation != null) {
+                // Get by location
+                pdfFile = pdfRepository.getPDFFileByPath(fileLocation);
+            }
         }
     }
 }

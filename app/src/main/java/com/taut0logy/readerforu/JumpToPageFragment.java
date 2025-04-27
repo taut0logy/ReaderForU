@@ -1,9 +1,13 @@
 package com.taut0logy.readerforu;
 
 import android.app.Dialog;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.app.AppCompatDialogFragment;
 
 import android.util.Log;
@@ -31,6 +35,37 @@ public class JumpToPageFragment extends AppCompatDialogFragment {
 
     public void setJumpToPageListener(JumpToPageListener listener) {
         this.listener = listener;
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        applyTheme();
+    }
+
+    private void applyTheme() {
+        // Get the same shared preferences used in BrowserActivity
+        SharedPreferences sharedPreferences = requireActivity().getSharedPreferences("reader", Context.MODE_PRIVATE);
+        String theme = sharedPreferences.getString("theme", "system"); // Default to system
+        
+        // Set theme based on preference
+        switch (theme) {
+            case "light":
+                setTheme(R.style.Base_Theme_ReaderForU);
+                break;
+            case "dark":
+                setTheme(R.style.Theme_ReaderForU);
+                break;
+            default: // "system"
+                break;
+        }
+    }
+
+    // Helper method to set theme
+    private void setTheme(int themeResId) {
+        if (getActivity() != null) {
+            getActivity().setTheme(themeResId);
+        }
     }
 
     @Nullable

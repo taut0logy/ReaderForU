@@ -1,29 +1,43 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.ReaderForU" parent="Base.Theme.ReaderForU"> <!-- Inherit from Base theme to get NoActionBar -->
-        <!-- Updated Dark Theme Attributes with Blue-Black Palette -->
-        <item name="colorPrimary">@color/blue_primary_dark</item>
-        <item name="colorPrimaryVariant">@color/blue_primary_variant_dark</item>
-        <item name="colorOnPrimary">@color/text_on_primary_dark</item> <!-- Use defined text color -->
-        <item name="colorSecondary">@color/blue_secondary_dark</item>
-        <item name="colorSecondaryVariant">@color/blue_secondary_variant_dark</item>
-        <item name="colorOnSecondary">@color/text_on_secondary_dark</item> <!-- Use defined text color -->
-        <item name="android:colorBackground">@color/background_dark</item> <!-- Use defined background -->
-        <item name="colorSurface">@color/surface_dark</item> <!-- Use defined surface -->
-        <item name="colorError">@color/dark_error</item> <!-- Keep existing error color -->
+    <!-- Base night application theme. -->
+    <style name="Theme.ReaderForU" parent="Base.Theme.ReaderForU">
+        <!-- Primary colors -->
+        <item name="colorPrimary">@color/primary_blue_dark</item>
+        <item name="colorPrimaryVariant">@color/primary_variant_dark</item>
+        <item name="colorOnPrimary">@color/text_on_primary_dark</item>
+        
+        <!-- Secondary colors -->
+        <item name="colorSecondary">@color/secondary_blue_dark</item>
+        <item name="colorSecondaryVariant">@color/secondary_variant_dark</item>
+        <item name="colorOnSecondary">@color/text_on_secondary_dark</item>
+        
+        <!-- Background and surface colors -->
+        <item name="android:colorBackground">@color/background_dark</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        <item name="android:windowBackground">@color/background_dark</item>
+        
+        <!-- Text colors -->
+        <item name="android:textColorPrimary">@color/text_primary_dark</item>
+        <item name="android:textColorSecondary">@color/text_secondary_dark</item>
         <item name="colorOnBackground">@color/text_primary_dark</item>
         <item name="colorOnSurface">@color/text_primary_dark</item>
-        <item name="colorOnError">@color/black</item> <!-- Keep existing text on error -->
-        <!-- Custom Text & Background Attributes -->
-        <item name="textColorPrimary">@color/text_primary_dark</item>
-        <item name="textColorSecondary">@color/text_secondary_dark</item>
-        <item name="bookViewBackgroundColor">@color/book_view_background_dark</item> <!-- Use defined book view background -->
-        <item name="colorOnSurfaceVariant">@color/material_on_surface_variant</item> <!-- Keep existing -->
-        <item name="colorSurfaceContainerHighest">@color/material_dark_grey</item> <!-- Keep existing -->
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item> <!-- Ensure status bar uses primary variant -->
-        <!-- Window background -->
-        <item name="android:windowBackground">?attr/colorSurface</item> <!-- Ensure window background uses surface -->
-        <!-- Customize your theme here. -->
+        
+        <!-- Custom attributes -->
+        <item name="bookViewBackgroundColor">@color/book_view_background_dark</item>
+        <item name="colorSurfaceContainerHighest">@color/material_dark_grey</item>
+        <item name="toolbarIconTint">@color/toolbar_icon_tint_dark</item>
+        <item name="cardBackgroundColor">@color/card_background_dark</item>
+        <item name="dividerColor">@color/divider_dark</item>
+        <item name="itemRippleColor">@color/ripple_dark</item>
+        
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">@color/primary_variant_dark</item>
+        
+        <!-- Navigation bar color -->
+        <item name="android:navigationBarColor">@color/surface_dark</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+        
+        <!-- Make status bar icons light on dark background -->
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
     </style>
 </resources>

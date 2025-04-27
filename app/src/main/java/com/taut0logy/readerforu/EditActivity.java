@@ -1,175 +1,347 @@
 package com.taut0logy.readerforu;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.content.ContentResolver;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.database.SQLException;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
+import android.provider.OpenableColumns;
 import android.util.Log;
-import android.view.Menu;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.PdfWriter;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.itextpdf.kernel.pdf.WriterProperties;
+import com.taut0logy.readerforu.data.PDFFile;
+import com.taut0logy.readerforu.data.PDFRepository;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.Objects;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public class EditActivity extends AppCompatActivity {
+    private static final String TAG = "EditActivity";
     private EditText etName, etAuthor, etDescription, etCreator;
     private PDFFile pdfFile;
-    int position;
-    private static final String PDF_CACHE_KEY = "pdf_cache";
+    private int position;
+    private Uri fileUri; // URI obtained from InfoActivity via SAF
+    private PDFRepository pdfRepository; // Database repository
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_edit);
+
         Toolbar toolbar = findViewById(R.id.edit_toolbar);
-        ImageView imageView = findViewById(R.id.bookImageViewEdit);
         etName = findViewById(R.id.bookNameEdit);
         etAuthor = findViewById(R.id.authorEdit);
         etDescription = findViewById(R.id.descriptionEdit);
         etCreator = findViewById(R.id.creatorEdit);
         Button saveButton = findViewById(R.id.editSaveButton);
         setSupportActionBar(toolbar);
-        position = getIntent().getIntExtra("position", 0);
-        pdfFile = BrowserActivity.getPdfFiles().get(position);
-        if(pdfFile.getImagePath().equals("__protected")) {
-            imageView.setImageResource(R.drawable.lock);
-        } else {
-            if(pdfFile.getThumbnail() == null)
-                imageView.setImageResource(R.drawable.icon);
-            else
-                imageView.setImageBitmap(pdfFile.getThumbnail());
+        
+        // Initialize database repository
+        pdfRepository = new PDFRepository(this);
+        try {
+            pdfRepository.open();
+        } catch (SQLException e) {
+            Log.e(TAG, "Error opening database", e);
+            Toast.makeText(this, "Error accessing database", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
 
-        etName.setHint(pdfFile.getName());
-        etAuthor.setHint(pdfFile.getAuthor().equals("Unknown") ? "Add Author" : pdfFile.getAuthor());
-        etDescription.setHint(pdfFile.getDescription().equals("No description") ? "Add Description" : pdfFile.getDescription());
-        etCreator.setHint("Add Creator");
-        saveButton.setOnClickListener(v -> {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Save Changes");
-            builder.setMessage("Are you sure you want to save the changes?");
-            builder.setPositiveButton("Yes", (dialog, which) -> {
-                try {
-                    saveChanges();
-                } catch (JSONException e) {
-                    Log.e("EditActivity", "onCreate: ", e);
+        Intent intent = getIntent();
+        position = intent.getIntExtra("position", -1);
+        fileUri = intent.getData(); // Get the URI passed from InfoActivity
+        String fileLocation = intent.getStringExtra("file_location");
+
+        // Determine how to get the PDF file information
+        if (fileUri != null) {
+            // Use the URI directly
+            loadPdfInfoFromUri(fileUri);
+            // Try to find the file in the database
+            if (fileLocation != null) {
+                pdfFile = pdfRepository.getPDFFileByPath(fileLocation);
+            } else if (position >= 0 && position < BrowserActivity.getPdfFiles().size()) {
+                pdfFile = BrowserActivity.getPdfFiles().get(position);
+            } else {
+                // We need to create a new PDFFile entry for this URI
+                pdfFile = createPdfFileFromUri(fileUri);
+            }
+        } else if (position >= 0 && position < BrowserActivity.getPdfFiles().size()) {
+            // Get from position
+            pdfFile = BrowserActivity.getPdfFiles().get(position);
+            // Convert file path to URI if needed
+            if (!pdfFile.getLocation().startsWith("content://")) {
+                fileUri = Uri.fromFile(new File(pdfFile.getLocation()));
+            } else {
+                fileUri = Uri.parse(pdfFile.getLocation());
+            }
+            loadPdfInfoFromUri(fileUri);
+        } else if (fileLocation != null) {
+            // Get by location from database
+            pdfFile = pdfRepository.getPDFFileByPath(fileLocation);
+            if (pdfFile != null) {
+                if (pdfFile.getLocation().startsWith("content://")) {
+                    fileUri = Uri.parse(pdfFile.getLocation());
+                } else {
+                    fileUri = Uri.fromFile(new File(pdfFile.getLocation()));
                 }
+                loadPdfInfoFromUri(fileUri);
+            } else {
+                Toast.makeText(this, "Error: File not found in database.", Toast.LENGTH_SHORT).show();
                 finish();
-            });
-            builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
-            builder.create().show();
-        });
-        toolbar.setOnMenuItemClickListener(item -> {
-            int id = item.getItemId();
-            if(id == R.id.action_about_edit) {
-                BrowserActivity.showAboutDialog(this);
-                return true;
+                return;
             }
-            if(id == R.id.action_exit_edit) {
-                finish();
-                return true;
-            }
-            return false;
-        });
+        } else {
+            Toast.makeText(this, "Error: Invalid file information.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        saveButton.setOnClickListener(v -> saveChanges(fileUri));
     }
 
-    private void saveChanges() throws JSONException {
-        String name = etName.getText().toString();
-        String author = etAuthor.getText().toString();
-        String description = etDescription.getText().toString();
-        String creator = etCreator.getText().toString();
-        String pdfFilePath = pdfFile.getLocation();
+    private PDFFile createPdfFileFromUri(Uri uri) {
         try {
-            PdfReader reader = new PdfReader(pdfFilePath);
-            PdfWriter writer = new PdfWriter(pdfFilePath + "_temp");
-            PdfDocument pdfDocument = new PdfDocument(reader, writer);
-
+            String displayName = getDisplayNameFromUri(uri);
+            
+            // Extract metadata
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            if (inputStream == null) {
+                return new PDFFile(displayName, "Unknown", "No description", 
+                    uri.toString(), null, 0, 0, false, 
+                    System.currentTimeMillis(), System.currentTimeMillis());
+            }
+            
+            PdfReader reader = new PdfReader(inputStream);
+            PdfDocument pdfDocument = new PdfDocument(reader);
             PdfDocumentInfo info = pdfDocument.getDocumentInfo();
-            if (!name.isEmpty()) {
-                pdfFile.setName(name);
-                info.setTitle(name);
+            
+            String title = info.getTitle();
+            if (title == null || title.isEmpty() || title.equals("null")) {
+                title = displayName;
             }
-            if (!author.isEmpty()) {
-                pdfFile.setAuthor(author);
-                info.setAuthor(author);
+            
+            String author = info.getAuthor();
+            if (author == null || author.isEmpty() || author.equals("null")) {
+                author = "Unknown";
             }
-            if (!description.isEmpty()) {
-                pdfFile.setDescription(description);
-                info.setSubject(description);
+            
+            String description = info.getSubject();
+            if (description == null || description.isEmpty() || description.equals("null")) {
+                description = "No description";
             }
-            if (!creator.isEmpty()) {
-                info.setCreator(creator);
-            }
-            // Close the PDF document
+            
+            int pageCount = pdfDocument.getNumberOfPages();
+            
             pdfDocument.close();
             reader.close();
-            writer.close();
-            // Rename the updated temporary file to the original file
-            ((Runnable) () -> {
-                try {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                    builder.setTitle("Save Changes");
-                    builder.setMessage("Saving changes...");
-                    builder.setCancelable(false);
-                    AlertDialog dialog = builder.create();
-                    dialog.show();
-                    Files.move(Paths.get(pdfFilePath + "_temp"),
-                            Paths.get(pdfFilePath),
-                            StandardCopyOption.REPLACE_EXISTING);
-                    dialog.dismiss();
-                } catch (Exception e) {
-                    Log.e("PDFErr", "saveChanges: ", e);
-                }
-            }).run();
+            inputStream.close();
+            
+            // Create and save to database
+            PDFFile newFile = new PDFFile(title, author, description, uri.toString(), 
+                null, 0, pageCount, false, System.currentTimeMillis(), System.currentTimeMillis());
+            
+            return pdfRepository.insertOrUpdatePDFFile(newFile);
+            
         } catch (Exception e) {
-            if(Objects.requireNonNull(e.getMessage()).contains("password")) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("Error");
-                builder.setMessage("File is encrypted");
-                builder.setCancelable(false);
-                builder.setPositiveButton("OK", (dialog, which) -> finish());
-                builder.show();
-            }
-            Log.e("PDFErr", "saveChanges: ", e);
+            Log.e(TAG, "Error creating PDFFile from URI", e);
+            String displayName = getDisplayNameFromUri(uri);
+            return new PDFFile(displayName, "Unknown", "No description", 
+                uri.toString(), null, 0, 0, false, 
+                System.currentTimeMillis(), System.currentTimeMillis());
         }
-        pdfFile.setModified(new File(pdfFile.getLocation()).lastModified());
-        BrowserActivity.getPdfFiles().set(position, pdfFile);
-        Intent intent = new Intent("com.taut0logy.readerforu.PDF_FILE_UPDATED");
-        intent.putExtra("position", position);
-        sendBroadcast(intent);
-        SharedPreferences sharedPreferences = getSharedPreferences("reader", MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
+    }
+    
+    private String getDisplayNameFromUri(Uri uri) {
+        String displayName = "Unknown PDF";
         try {
-            JSONArray jsonArray = new JSONArray(sharedPreferences.getString(PDF_CACHE_KEY, "[]"));
-            jsonArray.put(position, pdfFile.toJSON());
-            editor.putString(PDF_CACHE_KEY, jsonArray.toString());
-            editor.apply();
-        } catch (JSONException e) {
-            Log.e("EditActivity", "saveChanges: ", e);
+            if (uri.getScheme().equals("content")) {
+                try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                        if (nameIndex != -1) {
+                            displayName = cursor.getString(nameIndex);
+                        }
+                    }
+                }
+            } else if (uri.getScheme().equals("file")) {
+                displayName = uri.getLastPathSegment();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting display name from URI", e);
+        }
+        return displayName != null ? displayName : "Unknown PDF";
+    }
+
+    private void loadPdfInfoFromUri(Uri uri) {
+        ContentResolver contentResolver = getContentResolver();
+        try {
+            InputStream inputStream = contentResolver.openInputStream(uri);
+            if (inputStream == null) {
+                Toast.makeText(this, "Cannot access file", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            PdfReader reader = new PdfReader(inputStream);
+            PdfDocument pdfDocument = new PdfDocument(reader);
+            PdfDocumentInfo info = pdfDocument.getDocumentInfo();
+
+            String title = info.getTitle();
+            String author = info.getAuthor();
+            String subject = info.getSubject(); // Description is often in Subject
+            String creator = info.getCreator();
+
+            etName.setText(title != null && !title.isEmpty() && !title.equals("null") ? title : "");
+            etAuthor.setText(author != null && !author.isEmpty() && !author.equals("null") ? author : "");
+            etDescription.setText(subject != null && !subject.isEmpty() && !subject.equals("null") ? subject : "");
+            etCreator.setText(creator != null && !creator.isEmpty() && !creator.equals("null") ? creator : "");
+
+            pdfDocument.close();
+            reader.close();
+            inputStream.close();
+
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading PDF info from URI: " + uri, e);
+            Toast.makeText(this, "Error reading PDF details: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        } catch (Exception e) { // Catch potential iText errors
+            Log.e(TAG, "iText error reading PDF info from URI: " + uri, e);
+            Toast.makeText(this, "Error parsing PDF details: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.edit_menu, menu);
-        return true;
+    private void saveChanges(Uri uri) {
+        String newName = etName.getText().toString().trim();
+        String newAuthor = etAuthor.getText().toString().trim();
+        String newDescription = etDescription.getText().toString().trim();
+        String newCreator = etCreator.getText().toString().trim();
+
+        ContentResolver contentResolver = getContentResolver();
+        ParcelFileDescriptor pfd = null;
+        PdfDocument pdfDocument = null;
+        PdfReader reader = null;
+
+        try {
+            // Open the document with read/write mode
+            pfd = contentResolver.openFileDescriptor(uri, "rw");
+            if (pfd == null) {
+                throw new IOException("Failed to open file descriptor for writing");
+            }
+
+            // Create reader for the original content
+            InputStream inputStream = new FileInputStream(pfd.getFileDescriptor());
+            reader = new PdfReader(inputStream); // Use the input stream from PFD
+
+            // Create writer targeting the same file descriptor
+            OutputStream outputStream = new FileOutputStream(pfd.getFileDescriptor());
+            PdfWriter writer = new PdfWriter(outputStream, new WriterProperties().setFullCompressionMode(true));
+
+            // Create the PdfDocument
+            pdfDocument = new PdfDocument(reader, writer);
+            PdfDocumentInfo info = pdfDocument.getDocumentInfo();
+
+            // Update metadata
+            info.setTitle(newName.isEmpty() ? null : newName);
+            info.setAuthor(newAuthor.isEmpty() ? null : newAuthor);
+            info.setSubject(newDescription.isEmpty() ? null : newDescription); // Update subject for description
+            info.setCreator(newCreator.isEmpty() ? null : newCreator);
+
+            // Update the PDFFile object in database
+            if (pdfFile != null) {
+                pdfFile.setName(newName.isEmpty() ? "Unknown Title" : newName);
+                pdfFile.setAuthor(newAuthor.isEmpty() ? "Unknown Author" : newAuthor);
+                pdfFile.setDescription(newDescription.isEmpty() ? "No Description" : newDescription);
+                
+                // Update the database
+                updateDatabase();
+            }
+
+            // Close the document - this flushes changes to the output stream
+            pdfDocument.close(); // This closes the writer and reader implicitly
+
+            // Notify BrowserActivity if needed
+            if (position >= 0) {
+                Intent updateIntent = new Intent("com.taut0logy.readerforu.PDF_FILE_UPDATED");
+                updateIntent.putExtra("position", position);
+                sendBroadcast(updateIntent);
+            }
+
+            Toast.makeText(this, "Changes saved successfully", Toast.LENGTH_SHORT).show();
+            finish(); // Close EditActivity after saving
+
+        } catch (IOException e) {
+            Log.e(TAG, "Error writing PDF info to URI: " + uri, e);
+            Toast.makeText(this, "Error saving changes: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        } catch (Exception e) { // Catch potential iText errors
+            Log.e(TAG, "iText error writing PDF info to URI: " + uri, e);
+            Toast.makeText(this, "Error processing PDF for saving: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        } finally {
+            // Ensure resources are closed even if errors occur
+            try {
+                if (pdfDocument != null && !pdfDocument.isClosed()) {
+                    pdfDocument.close();
+                }
+                if (pfd != null) {
+                    pfd.close();
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Error closing resources", e);
+            }
+        }
     }
 
+    private void updateDatabase() {
+        // Update the database with the modified PDF file
+        if (pdfRepository != null && pdfFile != null) {
+            pdfRepository.updateMetadata(
+                pdfFile.getLocation(),
+                pdfFile.getName(),
+                pdfFile.getAuthor(),
+                pdfFile.getDescription()
+            );
+            Log.d(TAG, "Updated PDF metadata in database: " + pdfFile.getLocation());
+        }
+    }
+    
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Don't close database here as other threads might still be using it
+    }
+    
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Ensure database is open
+        if (pdfRepository != null) {
+            try {
+                pdfRepository.open();
+            } catch (SQLException e) {
+                Log.e(TAG, "Error reopening database", e);
+            }
+        }
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Close database when activity is destroyed
+        if (pdfRepository != null) {
+            pdfRepository.close();
+        }
+    }
 }

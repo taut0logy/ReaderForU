@@ -2,14 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- Only request legacy storage permissions for Android 12 (API 32) and lower -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -19,14 +19,15 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.ReaderForU"
+        android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
             android:exported="false"
-            android:grantUriPermissions="true"
-            android:readPermission="android.permission.MANAGE_EXTERNAL_STORAGE"
-            android:writePermission="android.permission.MANAGE_EXTERNAL_STORAGE">
+            android:grantUriPermissions="true">
+            <!-- FileProvider does not require explicit read/write permissions here -->
+            <!-- It grants temporary access based on the URI -->
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />

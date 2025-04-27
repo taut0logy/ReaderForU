@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">ReaderForU</string>
     <string name="thumbnail_of_the_book">Thumbnail of the book</string>
-    <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="refresh">refresh</string>
     <string name="search">search</string>
@@ -11,16 +10,16 @@
     <string name="edit">edit</string>
     <string name="delete">delete</string>
     <string name="loading_pdf_files">Loading PDF Files…</string>
-    <string name="favourite">Add/Remove Favourite</string>
+
     <string name="edit_book_details">Edit book details</string>
     <string name="delete_file">Delete file</string>
     <string name="show_file_info">Show File Info</string>
-    <string name="author">author</string>
+
     <string name="_100">100</string>
     <string name="progress">Progress:</string>
-    <string name="pages">Pages:</string>
+
     <string name="_0">0%</string>
-    <string name="name_of_the_book_here_in_one_line">name of the book here in one line</string>
+
     <string name="_000">0</string>
     <string name="author_name">Author Name</string>
     <string name="book_name">Book Name</string>
@@ -29,7 +28,7 @@
     <string name="toggle_dark_mode">Toggle Dark Mode</string>
     <string name="jump_to_page">Jump to Page</string>
     <string name="jump">Jump</string>
-    <string name="no_data_found">No data found</string>
+
     <string name="new_description">New Description</string>
     <string name="new_creator">New Creator</string>
     <string name="new_author">New Author</string>
@@ -38,7 +37,7 @@
     <string name="cover_image">Cover Image</string>
     <string name="filter">Filter</string>
     <string name="sort">Sort</string>
-    <string name="share_current_file">Share current file</string>
+
     <string name="read_the_current_page_aloud">Read the current page aloud</string>
     <string name="no_pdf_files_found">No PDF Files found</string>
 
@@ -47,4 +46,20 @@
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_system">System Default</string>
+    
+    <string name="clear_thumbnails">Clear Thumbnails</string>
+    <string name="rebuild_thumbnails">Rebuild All Thumbnails</string>
+    <string name="manage_folders">Manage Folders</string>
+    <string name="add_pdf_folder">Add PDF Folder</string>
+
+    <!-- Book view strings -->
+    <string name="pdf_thumbnail">PDF Thumbnail</string>
+    <string name="info">Info</string>
+    <string name="add_pdf">Add PDF</string>
+    <string name="name_of_the_book_here_in_one_line">Name of the book here in one line</string>
+    <string name="author">Author</string>
+    <string name="pages">Pages:</string>
+    <string name="favourite">Favourite</string>
+    <string name="share_current_file">Share current file</string>
+    <string name="no_data_found">No PDFs Found</string>
 </resources>
