@@ -7,8 +7,8 @@
     android:layout_height="wrap_content"
     android:paddingStart="20dp"
     android:paddingEnd="20dp"
-    android:background="@drawable/card_bg"
-    android:backgroundTint="?attr/colorBackgroundFloating">
+    android:background="@drawable/card_bg_2"
+    android:backgroundTint="?attr/colorSurfaceContainerHighest">
 
     <TextView
         android:id="@+id/textView"

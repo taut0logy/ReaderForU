@@ -62,4 +62,10 @@
     <string name="favourite">Favourite</string>
     <string name="share_current_file">Share current file</string>
     <string name="no_data_found">No PDFs Found</string>
+    <string name="cancel">Cancel</string>
+    <string name="submit">Submit</string>
+    <string name="enter_password">Enter Password</string>
+    <string name="password_required">Password Required</string>
+    <string name="unknown_size">Unknown size</string>
+    <string name="unknown">Unknown</string>
 </resources>

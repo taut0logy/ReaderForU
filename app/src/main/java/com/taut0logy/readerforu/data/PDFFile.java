@@ -1,6 +1,7 @@
 package com.taut0logy.readerforu.data;
 
 import android.graphics.Bitmap;
+import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -62,7 +63,6 @@ public class PDFFile implements Serializable {
         this.currPage = currPage;
         this.totalPages = totalPages;
         this.isFavourite = isFavourite;
-        this.modified = modified;
         this.lastRead = lastRead;
         this.dateAdded = dateAdded;
         this.thumbnail = null; // Thumbnail loaded separately
@@ -142,10 +142,6 @@ public class PDFFile implements Serializable {
         this.description = description;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
     }
@@ -196,40 +192,8 @@ public class PDFFile implements Serializable {
             pdfObj.put("modified", modified);
             pdfObj.put("lastRead", lastRead);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e("PDFFile", "Error converting PDFFile to JSON", e);
         }
         return pdfObj;
     }
-
-    // Static method to create PDFFile from JSON (might need adjustment based on DB fields)
-//    public static PDFFile fromJSON(JSONObject jsonObject) {
-//        try {
-//            String name = jsonObject.optString("name", "Unknown Title");
-//            String author = jsonObject.optString("author", "Unknown Author");
-//            String description = jsonObject.optString("description", "No Description");
-//            String location = jsonObject.getString("location"); // Location is mandatory
-//            String imagePath = jsonObject.optString("imagePath", null); // Thumbnail path
-//            int currPage = jsonObject.optInt("currPage", 0);
-//            int totalPages = jsonObject.optInt("totalPages", 0);
-//            boolean isFavourite = jsonObject.optBoolean("isFavourite", false);
-//            long lastRead = jsonObject.optLong("lastRead", 0);
-//            long dateAdded = jsonObject.optLong("dateAdded", System.currentTimeMillis());
-//            // ID and isProtected might not be in old cache JSON, handle gracefully
-//            long id = jsonObject.optLong("id", -1); // Default to -1 if not present
-//            boolean isProtected = jsonObject.optBoolean("isProtected", false);
-//
-//            PDFFile pdfFile = new PDFFile(name, author, description, location, imagePath, currPage, totalPages, isFavourite, lastRead, dateAdded);
-//            pdfFile.setId(id); // Set the ID if available
-//            pdfFile.setProtected(isProtected);
-//            // Note: Thumbnail Bitmap is not stored in JSON, only its path (imagePath)
-//            return pdfFile;
-//        } catch (JSONException e) {
-//            Log.e("PDFFile", "Error creating PDFFile from JSON", e);
-//            return null;
-//        }
-//    }
-//
-//    public long getSize() {
-//        return 0;
-//    }
 }

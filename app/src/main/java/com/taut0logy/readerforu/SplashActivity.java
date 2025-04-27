@@ -1,15 +1,7 @@
 package com.taut0logy.readerforu;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-import androidx.documentfile.provider.DocumentFile;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -20,9 +12,16 @@ import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.documentfile.provider.DocumentFile;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.io.File;
 
 @SuppressLint("CustomSplashScreen")
 public class SplashActivity extends AppCompatActivity {
@@ -150,9 +149,7 @@ public class SplashActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Storage Permissions")
                 .setMessage("This app needs storage permissions to access PDF files on your device.")
-                .setPositiveButton("Continue", (dialog, which) -> {
-                    requestPermissionsLauncher.launch(permissions);
-                })
+                .setPositiveButton("Continue", (dialog, which) -> requestPermissionsLauncher.launch(permissions))
                 .setCancelable(false)
                 .show();
     }
@@ -170,9 +167,7 @@ public class SplashActivity extends AppCompatActivity {
                     startActivity(intent);
                     finish();
                 })
-                .setNegativeButton("Exit", (dialog, which) -> {
-                    finishAffinity();
-                })
+                .setNegativeButton("Exit", (dialog, which) -> finishAffinity())
                 .setCancelable(false)
                 .show();
     }
@@ -185,9 +180,7 @@ public class SplashActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Select PDF Folder")
                 .setMessage(message)
-                .setPositiveButton("Select Folder", (dialog, which) -> {
-                    launchDirectoryPicker();
-                })
+                .setPositiveButton("Select Folder", (dialog, which) -> launchDirectoryPicker())
                 .setNegativeButton(isFirstLaunch ? "Exit" : "Skip", (dialog, which) -> {
                     if (isFirstLaunch) {
                         finishAffinity();
@@ -203,12 +196,8 @@ public class SplashActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Folder Selection Required")
                 .setMessage("You need to select at least one folder containing PDFs to use this app.")
-                .setPositiveButton("Select Folder", (dialog, which) -> {
-                    launchDirectoryPicker();
-                })
-                .setNegativeButton("Exit", (dialog, which) -> {
-                    finishAffinity();
-                })
+                .setPositiveButton("Select Folder", (dialog, which) -> launchDirectoryPicker())
+                .setNegativeButton("Exit", (dialog, which) -> finishAffinity())
                 .setCancelable(false)
                 .show();
     }
@@ -217,9 +206,7 @@ public class SplashActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Folder Selection Error")
                 .setMessage("There was an error accessing the selected folder. Please try again.")
-                .setPositiveButton("Retry", (dialog, which) -> {
-                    launchDirectoryPicker();
-                })
+                .setPositiveButton("Retry", (dialog, which) -> launchDirectoryPicker())
                 .setNegativeButton(isFirstLaunch ? "Exit" : "Skip", (dialog, which) -> {
                     if (isFirstLaunch) {
                         finishAffinity();

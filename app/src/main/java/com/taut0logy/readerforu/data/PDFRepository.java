@@ -56,7 +56,7 @@ public class PDFRepository {
         values.put(DatabaseHelper.COLUMN_IS_FAVOURITE, pdfFile.getFavourite() ? 1 : 0);
         values.put(DatabaseHelper.COLUMN_LAST_READ_TIMESTAMP, pdfFile.getLastRead());
         values.put(DatabaseHelper.COLUMN_DATE_ADDED_TIMESTAMP, pdfFile.getDateAdded());
-        values.put(DatabaseHelper.COLUMN_THUMBNAIL_PATH, pdfFile.getImagePath()); // Assuming getImagePath holds thumbnail path
+        values.put(DatabaseHelper.COLUMN_THUMBNAIL_PATH, pdfFile.getImagePath());
         values.put(DatabaseHelper.COLUMN_IS_PROTECTED, pdfFile.isProtected() ? 1 : 0);
 
         // Try to update first based on path
@@ -237,7 +237,7 @@ public class PDFRepository {
             DatabaseHelper.COLUMN_PATH + " = ?",
             new String[] { filePath }
         );
-        
+
         return rowsAffected > 0;
     }
     

@@ -1345,7 +1345,7 @@ public class BrowserActivity extends AppCompatActivity {
                             Log.w("Receiver", "File not found in database: " + filePath);
                         }
                     } else {
-                        Log.w("Receiver", "Invalid position received for update: " + position + ", path: " + filePath);
+                        Log.w("Receiver", "Invalid position received for update: " + position);
                     }
                 }
             }
@@ -1411,6 +1411,7 @@ public class BrowserActivity extends AppCompatActivity {
         };
     }
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     protected void onResume() {
         super.onResume();

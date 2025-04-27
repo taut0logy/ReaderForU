@@ -8,7 +8,6 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,10 +24,6 @@ import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.imageview.ShapeableImageView;
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfDocumentInfo;
-import com.itextpdf.kernel.pdf.PdfReader;
-import com.itextpdf.kernel.pdf.PdfWriter;
 import com.taut0logy.readerforu.data.PDFFile;
 import com.taut0logy.readerforu.data.PDFRepository;
 import com.taut0logy.readerforu.util.ThumbnailUtils;
@@ -36,7 +31,6 @@ import com.taut0logy.readerforu.util.ThumbnailUtils;
 import org.json.JSONArray;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -54,7 +48,6 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
         this.context = context;
         Log.d("PDFErr", "PDFFileAdapter constructor: "+ pdfFiles.size() + " "+filteredPdfFiles.size());
     }
-
     @NonNull
     @Override
     public PDFFileAdapter.PDFFileViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -97,7 +90,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
                 
                 // If still null, use default icon
                 if(bitmap == null) {
-                    bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.icon);
+                    bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.sample);
                 }
             }
             holder.thumbnail.setImageBitmap(bitmap);
@@ -120,7 +113,6 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
             }
             
             String pdfFilePath = pdfFile.getLocation();
-            boolean isContentUri = pdfFilePath.startsWith("content://");
             boolean success = false;
             
             // Update the favorite status in the database first (this should work for all files)
@@ -135,39 +127,7 @@ public class PDFFileAdapter extends RecyclerView.Adapter<PDFFileAdapter.PDFFileV
                 Log.e("PDFErr", "Error updating database: ", e);
             }
             
-            if (!isContentUri) {
-                // For regular files, try to update the metadata as well
-                try {
-                    PdfReader pdfReader = new PdfReader(pdfFilePath);
-                    PdfWriter pdfWriter = new PdfWriter(pdfFilePath + "_temp");
-                    PdfDocument pdfDocument = new PdfDocument(pdfReader, pdfWriter);
-                    PdfDocumentInfo pdfDocumentInfo = pdfDocument.getDocumentInfo();
-                    
-                    // Update document metadata
-                    pdfDocumentInfo.setMoreInfo("favourite", pdfFile.getFavourite() ? "false" : "true");
-                    
-                    pdfDocument.close();
-                    pdfReader.close();
-                    pdfWriter.close();
-                    
-                    // Replace original file with updated one
-                    new Thread(() -> {
-                        try {
-                            java.nio.file.Files.move(java.nio.file.Paths.get(pdfFilePath + "_temp"),
-                                    java.nio.file.Paths.get(pdfFilePath),
-                                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                        } catch (IOException e) {
-                            Log.e("PDFErr", "onBindViewHolder: ", e);
-                        }
-                    }).start();
-                    
-                    success = true;
-                } catch (Exception e) {
-                    Log.e("PDFErr", "Error updating PDF metadata: " + e.getClass().getName(), e);
-                }
-            }
-            
-            if (success || isContentUri) {
+            if (success) {
                 // Toggle the favorite status
                 boolean newFavoriteStatus = !pdfFile.getFavourite();
                 pdfFile.setFavourite(newFavoriteStatus);

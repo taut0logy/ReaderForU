@@ -149,9 +149,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             startActivity(intent3);
         });
 
-        sharebtn.setOnClickListener(v -> {
-            sharePdf();
-        });
+        sharebtn.setOnClickListener(v -> sharePdf());
 
         speechbtn.setOnClickListener(v -> {
             if(textToSpeech.isSpeaking()) {
@@ -291,9 +289,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         
         // Update last read time in database
         if (recyclerPosition != -1 && pdfRepository != null) {
-            new Thread(() -> {
-                pdfRepository.updateLastReadTime(pdfFile.getLocation(), System.currentTimeMillis());
-            }).start();
+            new Thread(() -> pdfRepository.updateLastReadTime(pdfFile.getLocation(), System.currentTimeMillis())).start();
         }
     }
     
@@ -489,7 +485,13 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             })
             .onError(t -> {
                 Log.e(TAG, "Error loading PDF in configurator", t);
-                Toast.makeText(ReaderActivity.this, "Error loading PDF: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                // Check if this is a password error
+                if (
+                    (t.getMessage() != null && t.getMessage().toLowerCase().contains("password"))) {
+                    runOnUiThread(() -> promptUserForPassword(pdfFile.getLocation()));
+                } else {
+                    Toast.makeText(ReaderActivity.this, "Error loading PDF: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                }
             })
             .onPageError((page, t) -> {
                 Log.e(TAG, "Error loading page " + page, t);
@@ -500,6 +502,27 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
                 etCurrPage.setText(String.valueOf(page + 1));
                 nowPage = page + 1;
                 Log.d(TAG, "Page changed to: " + nowPage);
+                
+                // Update current page in database and send broadcast
+                if (recyclerPosition != -1 && pdfRepository != null) {
+                    // Update in-memory object
+                    pdfFile.setCurrPage(nowPage);
+                    
+                    // Update database in background thread
+                    new Thread(() -> {
+                        try {
+                            pdfRepository.updateCurrentPage(pdfFile.getLocation(), nowPage, System.currentTimeMillis());
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error updating current page", e);
+                        }
+                    }).start();
+                    
+                    // Send broadcast to update browser activity
+                    Intent intent = new Intent(BrowserActivity.ACTION_PDF_UPDATED);
+                    intent.putExtra("position", recyclerPosition);
+                    intent.putExtra("path", pdfFile.getLocation());
+                    sendBroadcast(intent);
+                }
             })
             .onPageScroll((page, positionOffset) -> {
                 // Get direction of scroll
@@ -524,7 +547,7 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
             .load();
     }
 
-    private int promptUserForPassword(String location) {
+    private void promptUserForPassword(String location) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = getLayoutInflater().inflate(R.layout.pdf_password_dialog, null);
         builder.setView(view);
@@ -533,23 +556,42 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
         Button cancelButton = view.findViewById(R.id.cancelPassword);
         builder.setCancelable(false);
         AlertDialog dialog = builder.create();
+        
+        // Show dialog and handle password input
         okButton.setOnClickListener(v -> {
             String password = passwordEditText.getText().toString();
             try {
                 loadPdfWithPassword(location, password);
+                
+                // Mark file as protected in memory and database
+                if (pdfFile != null) {
+                    pdfFile.setProtected(true);
+                    if (pdfRepository != null) {
+                        new Thread(() -> {
+                            try {
+                                pdfRepository.updateProtectedStatus(pdfFile.getLocation(), true);
+                                Log.d(TAG, "Updated protected status in database for: " + pdfFile.getLocation());
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error updating protected status", e);
+                            }
+                        }).start();
+                    }
+                }
+                
                 dialog.dismiss();
             } catch (Exception e) {
-                AlertDialog.Builder builder1 = new AlertDialog.Builder(this);
-                builder1.setTitle("Error");
-                builder1.setMessage("Invalid password");
-                builder1.setPositiveButton("OK", (dialog1, which1) -> finish());
-                builder1.show();
-                Log.e("PDFErr", "promptUserForPassword: ", e);
+                Toast.makeText(this, "Invalid password", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Error with password: " + e.getMessage(), e);
+                // Keep dialog open for another attempt
             }
         });
-        cancelButton.setOnClickListener(v -> finish());
+        
+        cancelButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            finish(); // Close activity if user cancels password entry
+        });
+        
         dialog.show();
-        return 0;
     }
 
     private void showJumpToPageDialog(int totalPage, int curPage) {
@@ -725,11 +767,11 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
                 
                 // Check if this file exists in our database
                 PDFFile existingFile = pdfRepository.getPDFFileByPath(uri.toString());
-                
+
+                // Not from recycler view
                 if (existingFile != null) {
                     // We already have this file in our database
                     pdfFile = existingFile;
-                    recyclerPosition = -1; // Not from recycler view
                 } else {
                     // This is a new file, create a temporary PDFFile object for it
                     ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
@@ -787,9 +829,9 @@ public class ReaderActivity extends AppCompatActivity implements JumpToPageFragm
                             Log.e(TAG, "Error closing file descriptor", e);
                         }
                     }
-                    
-                    recyclerPosition = -1; // Not from recycler view
+
                 }
+                recyclerPosition = -1; // Not from recycler view
             } catch (Exception e) {
                 Log.e(TAG, "Error handling external file", e);
                 Toast.makeText(this, "Error opening file: " + e.getMessage(), Toast.LENGTH_SHORT).show();

@@ -1,11 +1,6 @@
 package com.taut0logy.readerforu;
 
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -21,17 +16,20 @@ import android.view.MenuItem;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+
 import com.google.android.material.imageview.ShapeableImageView;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfDocumentInfo;
 import com.itextpdf.kernel.pdf.PdfReader;
-import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.ReaderProperties;
 import com.taut0logy.readerforu.data.PDFFile;
 import com.taut0logy.readerforu.data.PDFRepository;
 
 import java.io.File;
-import java.io.IOException;
 
 public class InfoActivity extends AppCompatActivity {
     private static final String TAG = "InfoActivity";
@@ -137,7 +135,7 @@ public class InfoActivity extends AppCompatActivity {
             imageView.setImageResource(R.drawable.lock);
         } else {
             if (pdfFile.getThumbnail() == null) {
-                imageView.setImageResource(R.drawable.icon);
+                imageView.setImageResource(R.drawable.sample);
             } else {
                 imageView.setImageBitmap(pdfFile.getThumbnail());
             }
@@ -180,13 +178,13 @@ public class InfoActivity extends AppCompatActivity {
                             }
                         } catch (Exception e) {
                             Log.e(TAG, "Error getting content URI file size", e);
-                            size.setText("Unknown size");
+                            size.setText(R.string.unknown_size);
                         }
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error reading PDF from content URI", e);
-                    modified.setText("Unknown");
-                    size.setText("Unknown size");
+                    modified.setText(R.string.unknown);
+                    size.setText(R.string.unknown_size);
                 }
             } else {
                 // Handle file path
@@ -227,8 +225,8 @@ public class InfoActivity extends AppCompatActivity {
                     return;
                 }
             } else {
-                modified.setText("Unknown");
-                size.setText("Unknown size");
+                modified.setText(R.string.unknown);
+                size.setText(R.string.unknown_size);
             }
         }
         
@@ -308,36 +306,6 @@ public class InfoActivity extends AppCompatActivity {
             favButton.setIcon(R.drawable.baseline_star_border_24);
             synchronized (BrowserActivity.getFavPdfFiles()) {
                 BrowserActivity.getFavPdfFiles().remove(pdfFile);
-            }
-        }
-        
-        // Try to update the PDF file metadata if it's a regular file path
-        if (!fileLocation.startsWith("content://")) {
-            try {
-                PdfReader pdfReader = new PdfReader(fileLocation);
-                PdfWriter pdfWriter = new PdfWriter(fileLocation + "_temp");
-                PdfDocument pdfDocument = new PdfDocument(pdfReader, pdfWriter);
-                PdfDocumentInfo pdfDocumentInfo = pdfDocument.getDocumentInfo();
-                pdfDocumentInfo.setMoreInfo("favourite", pdfFile.getFavourite() ? "true" : "false");
-                Log.d(TAG, "Updated favourite status in PDF metadata: " + pdfDocumentInfo.getMoreInfo("favourite"));
-                pdfDocument.close();
-                pdfReader.close();
-                pdfWriter.close();
-                
-                // Replace original file with the updated one
-                new Thread(() -> {
-                    try {
-                        java.nio.file.Files.move(
-                            java.nio.file.Paths.get(fileLocation + "_temp"),
-                            java.nio.file.Paths.get(fileLocation),
-                            java.nio.file.StandardCopyOption.REPLACE_EXISTING
-                        );
-                    } catch (IOException e) {
-                        Log.e(TAG, "Error replacing file after updating favourite status", e);
-                    }
-                }).start();
-            } catch (IOException e) {
-                Log.e(TAG, "Error updating favourite status in PDF metadata", e);
             }
         }
         
@@ -423,9 +391,7 @@ public class InfoActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(InfoActivity.this);
         builder.setTitle("Delete");
         builder.setMessage("Are you sure you want to delete this file?");
-        builder.setPositiveButton("Yes", (dialog, which) -> {
-            deleteFileUsingSaf(currentFileUri);
-        });
+        builder.setPositiveButton("Yes", (dialog, which) -> deleteFileUsingSaf(currentFileUri));
         builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
         builder.create().show();
     }
